@@ -104,6 +104,48 @@
   <div id="previsao"></div>
 </section>
 
+<section class="card">
+  <h2>Cartão de crédito</h2>
+
+  <form id="formCartao">
+    <input id="c_nome" placeholder="Nome do cartão" required />
+    <input id="c_limite" type="number" step="0.01" placeholder="Limite" />
+    <input id="c_fech" type="number" min="1" max="28" placeholder="Fechamento (1-28)" required />
+    <input id="c_venc" type="number" min="1" max="28" placeholder="Vencimento (1-28)" required />
+    <button type="submit">Criar cartão</button>
+  </form>
+
+  <hr/>
+
+  <form id="formCompra">
+    <select id="cc_cartao"></select>
+    <input id="cc_desc" placeholder="Compra (ex: PS5)" required />
+    <input id="cc_total" type="number" step="0.01" placeholder="Valor total" required />
+    <input id="cc_parc" type="number" min="1" max="48" placeholder="Parcelas" required />
+    <input id="cc_juros" type="number" step="0.001" placeholder="Juros mensal (ex: 0.02)" />
+    <input id="cc_data" type="date" required />
+    <select id="cc_cat"></select>
+    <button type="submit">Lançar compra parcelada</button>
+  </form>
+
+  <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <select id="fat_cartao"></select>
+    <input type="month" id="fat_mes" />
+    <button id="btnFat" type="button">Ver fatura</button>
+  </div>
+
+  <div id="fat_total" style="margin:10px 0;"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Parc</th><th>Descrição</th><th>Categoria</th><th>Mês</th><th>Valor</th><th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="fat_itens"></tbody>
+  </table>
+</section>
+
 <!-- Chart.js (CDN) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- TRANSAÇÕES -->

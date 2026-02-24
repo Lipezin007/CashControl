@@ -4,6 +4,18 @@ const resumoDiv = document.querySelector("#resumo");
 const relCats = document.querySelector("#relCats");
 
 const filtroMes = document.querySelector("#filtroMes");
+
+function mesAtualYYYYMM() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+if (filtroMes && !filtroMes.value) {
+  filtroMes.value = mesAtualYYYYMM();
+}
+
 const idInput = document.querySelector("#id");
 const descricaoInput = document.querySelector("#descricao");
 const valorInput = document.querySelector("#valor");
@@ -45,12 +57,10 @@ filtroMes?.addEventListener("input", async () => {
 
 async function carregarTransacoes() {
 
-  let url = "/api/transacoes";
-if (filtroMes && filtroMes.value) url += "?mes=" + filtroMes.value;
-console.log("BUSCANDO:", url);
-const trans = await fetch(url).then(r => r.json());
+  let url = "/api/movimentacoes?mes=" + filtroMes.value;
+const itens = await fetch(url).then(r => r.json());
 
-  lista.innerHTML = trans.map(t => `
+  lista.innerHTML = itens.map(t => `
     <tr>
       <td>${t.data}</td>
       <td>${t.descricao}</td>
@@ -139,6 +149,10 @@ form.addEventListener("submit", async (e) => {
 });
 
 (async function init() {
+  if (filtroMes && !filtroMes.value) {
+    filtroMes.value = mesAtualYYYYMM();
+  }
+
   await carregarCategorias();
   await carregarTransacoes();
   await carregarResumo();
@@ -357,3 +371,101 @@ async function refreshTudo() {
   // previsão (se tiver)
   if (typeof carregarPrevisao === "function") await carregarPrevisao();
 }
+
+// ===== CARTÃO (visualização/teste) =====
+const formCartao = document.querySelector("#formCartao");
+const cNome = document.querySelector("#c_nome");
+const cLimite = document.querySelector("#c_limite");
+const cFech = document.querySelector("#c_fech");
+const cVenc = document.querySelector("#c_venc");
+
+const formCompra = document.querySelector("#formCompra");
+const ccCartao = document.querySelector("#cc_cartao");
+const ccDesc = document.querySelector("#cc_desc");
+const ccTotal = document.querySelector("#cc_total");
+const ccParc = document.querySelector("#cc_parc");
+const ccJuros = document.querySelector("#cc_juros");
+const ccData = document.querySelector("#cc_data");
+const ccCat = document.querySelector("#cc_cat");
+
+const fatCartao = document.querySelector("#fat_cartao");
+const fatMes = document.querySelector("#fat_mes");
+const btnFat = document.querySelector("#btnFat");
+const fatTotal = document.querySelector("#fat_total");
+const fatItens = document.querySelector("#fat_itens");
+
+if (fatMes) fatMes.value = mesAtualYYYYMM();
+if (ccData) ccData.valueAsDate = new Date();
+
+async function carregarCartoes() {
+  const cartoes = await fetch("/api/cartoes").then(r => r.json());
+  const opts = cartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
+  if (ccCartao) ccCartao.innerHTML = opts;
+  if (fatCartao) fatCartao.innerHTML = opts;
+}
+
+async function carregarCategoriasCartao() {
+  const cats = await fetch("/api/categorias").then(r => r.json());
+  if (ccCat) ccCat.innerHTML = cats.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
+}
+
+formCartao?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  await fetch("/api/cartoes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      nome: cNome.value,
+      limite: Number(cLimite.value || 0),
+      dia_fechamento: Number(cFech.value),
+      dia_vencimento: Number(cVenc.value)
+    })
+  });
+  formCartao.reset();
+  await carregarCartoes();
+});
+
+formCompra?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  await fetch("/api/cartoes/compra", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      cartao_id: Number(ccCartao.value),
+      descricao: ccDesc.value,
+      valor_total: Number(ccTotal.value),
+      parcelas: Number(ccParc.value),
+      juros_mensal: Number(ccJuros.value || 0),
+      data_compra: ccData.value,
+      categoria_id: Number(ccCat.value)
+    })
+  });
+  formCompra.reset();
+  ccData.valueAsDate = new Date();
+  alert("Compra lançada e parcelas geradas!");
+});
+
+btnFat?.addEventListener("click", async () => {
+  const cartaoId = Number(fatCartao.value);
+  const mes = fatMes.value;
+  const f = await fetch(`/api/cartoes/${cartaoId}/fatura?mes=${encodeURIComponent(mes)}`).then(r => r.json());
+
+  fatTotal.innerHTML = `<b>Total da fatura:</b> ${money(f.total)} (mostre como negativo no app)`;
+
+  fatItens.innerHTML = f.itens.map(x => `
+    <tr>
+      <td>${x.numero_parcela}/${x.total_parcelas}</td>
+      <td>${x.descricao}</td>
+      <td>${x.categoria ?? "-"}</td>
+      <td>${x.mes_ref}</td>
+      <td>${money(x.valor)}</td>
+      <td>${x.status}</td>
+    </tr>
+  `).join("");
+});
+
+(async function initCartao() {
+  if (!formCartao && !formCompra) return;
+  await carregarCategoriasCartao();
+  await carregarCartoes();
+})();
