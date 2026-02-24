@@ -1,0 +1,6 @@
+body{font-family:Arial, sans-serif; max-width:900px; margin:20px auto; padding:0 12px}
+.card{border:1px solid #ddd; padding:12px; border-radius:10px; margin:12px 0}
+form{display:grid; gap:8px; grid-template-columns: 1fr 160px 140px 1fr 160px 120px}
+input,select,button{padding:8px}
+table{width:100%; border-collapse:collapse}
+th,td{border-bottom:1px solid #eee; padding:8px; text-align:left}

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Controle Financeiro</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>Controle Financeiro</h1>
+
+  <!-- RESUMO (apenas 1!) -->
+  <section class="card">
+    <h2>Resumo</h2>
+    <div id="resumo"></div>
+  </section>
+
+  <!-- NOVA TRANSAÇÃO -->
+  <section class="card">
+    <h2>Nova transação</h2>
+
+    <form id="form">
+      <input id="id" type="hidden" />
+
+      <input id="descricao" placeholder="Descrição" required />
+      <input id="valor" type="number" step="0.01" min="0.01" placeholder="Valor" required />
+
+      <select id="tipo" required>
+        <option value="entrada">Entrada</option>
+        <option value="saida">Saída</option>
+      </select>
+
+      <select id="categoria"></select>
+
+      <input id="data" type="date" required />
+
+      <button type="submit">Salvar</button>
+    </form>
+  </section>
+
+  <!-- RECORRÊNCIAS -->
+  <section class="card">
+    <h2>Recorrências</h2>
+
+    <form id="formRec">
+      <input id="r_descricao" placeholder="Descrição (ex: Salário)" required />
+      <input id="r_valor" type="number" step="0.01" min="0.01" placeholder="Valor" required />
+
+      <select id="r_tipo" required>
+        <option value="entrada">Entrada</option>
+        <option value="saida">Saída</option>
+      </select>
+
+      <select id="r_categoria"></select>
+
+      <input id="r_dia" type="number" min="1" max="28" placeholder="Dia (1-28)" required />
+
+      <button type="submit">Salvar recorrência</button>
+    </form>
+
+    <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <input id="r_mes" placeholder="YYYY-MM (ex: 2026-03)" />
+      <button id="btnGerar" type="button">Gerar mês</button>
+    </div>
+
+    <table style="margin-top:10px;">
+      <thead>
+        <tr>
+          <th>Dia</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th>Ativo</th>
+        </tr>
+      </thead>
+      <tbody id="listaRec"></tbody>
+    </table>
+  </section>
+
+<div style="margin-bottom:10px;">
+  <label>Filtrar por mês:</label>
+  <input type="month" id="filtroMes">
+</div>
+
+<section class="card">
+  <h2>Relatório por categoria</h2>
+  <table>
+    <thead>
+      <tr><th>Categoria</th><th>Saídas</th><th>Entradas</th></tr>
+    </thead>
+    <tbody id="relCats"></tbody>
+  </table>
+</section>
+
+  <!-- TRANSAÇÕES -->
+  <section class="card">
+    <h2>Transações</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="lista"></tbody>
+    </table>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
