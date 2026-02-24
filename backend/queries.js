@@ -80,16 +80,29 @@ function getResumo(mesYYYYMM = null) {
 }
 
 function getPrevisaoMes(mesYYYYMM) {
-  // soma recorrências ativas do mês (não depende de já ter gerado transações)
+  // data de hoje (local) e mês selecionado
+  const hoje = new Date();
+  const y = hoje.getFullYear();
+  const m = String(hoje.getMonth() + 1).padStart(2, "0");
+  const mesAtual = `${y}-${m}`;
+  const diaHoje = hoje.getDate();
+
+  // se for o mês atual, só conta recorrências do dia de hoje pra frente
+  // se for mês futuro, conta tudo (1..28)
+  // se for mês passado, conta 0 (opcional: você pode contar tudo, mas fica estranho como "previsão")
+  let diaMin = 1;
+  if (mesYYYYMM === mesAtual) diaMin = diaHoje;
+  if (mesYYYYMM < mesAtual) diaMin = 99; // não conta nada no passado
+
   const rec = db.prepare(`
     SELECT
       COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) AS entradas_previstas,
       COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) AS saidas_previstas
     FROM recorrencias
     WHERE ativo = 1
-  `).get();
+      AND dia_mes >= ?
+  `).get(diaMin);
 
-  // saldo atual (geral)
   const atual = db.prepare(`
     SELECT
       COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) -
@@ -97,13 +110,13 @@ function getPrevisaoMes(mesYYYYMM) {
     FROM transacoes
   `).get();
 
-  // se você quiser “saldo atual só até o mês selecionado”, troca por:
-  // WHERE substr(data,1,7) <= ?
-
-  const saldo_previsto = Number(atual.saldo_atual) + Number(rec.entradas_previstas) - Number(rec.saidas_previstas);
+  const saldo_previsto =
+    Number(atual.saldo_atual) + Number(rec.entradas_previstas) - Number(rec.saidas_previstas);
 
   return {
     mes: mesYYYYMM,
+    mes_atual: mesAtual,
+    dia_hoje: diaHoje,
     saldo_atual: Number(atual.saldo_atual),
     entradas_previstas: Number(rec.entradas_previstas),
     saidas_previstas: Number(rec.saidas_previstas),

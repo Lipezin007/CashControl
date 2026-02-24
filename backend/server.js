@@ -43,7 +43,7 @@ app.get("/api/relatorio-categorias", (req, res) => {
 });
 
 app.get("/api/previsao", (req, res) => {
-  const mes = req.query.mes; // YYYY-MM
+  const mes = req.query.mes;
   if (!mes || !/^\d{4}-\d{2}$/.test(mes)) {
     return res.status(400).json({ ok:false, erro:"mes inválido (use YYYY-MM)" });
   }
