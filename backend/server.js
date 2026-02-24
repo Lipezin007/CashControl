@@ -9,6 +9,26 @@ app.use(express.json());
 
 app.use(express.static(path.join(__dirname, "..", "src")));
 
+app.get("/api/movimentacoes", (req, res) => {
+  const mes = req.query.mes;
+  if (!mes || !/^\d{4}-\d{2}$/.test(mes)) return res.status(400).json({ ok:false, erro:"mes inválido" });
+  res.json(queries.getMovimentacoes(mes));
+});
+
+app.post("/api/movimentacoes", (req, res) => {
+  res.json(queries.criarMovimentacao(req.body));
+});
+
+app.put("/api/movimentacoes/:id", (req, res) => {
+  res.json(queries.editarMovimentacao(req.params.id, req.body));
+});
+
+app.delete("/api/movimentacoes/:id", (req, res) => {
+  res.json(queries.deletarMovimentacao(req.params.id));
+});
+
+app.get("/api/categorias", (req,res)=> res.json(queries.getCategorias()));
+
 app.get("/api/categorias", (req, res) => {
   res.json(queries.getCategorias());
 });
@@ -32,11 +52,11 @@ app.get("/api/movimentacoes", (req, res) => {
 });
 
 app.get("/api/relatorio-categorias", (req, res) => {
-  const mes = req.query.mes; // YYYY-MM
+  const mes = req.query.mes;
   if (!mes || !/^\d{4}-\d{2}$/.test(mes)) {
     return res.status(400).json({ ok:false, erro:"mes inválido (use YYYY-MM)" });
   }
-  res.json(queries.relatorioPorCategoria(mes));
+  res.json(queries.getRelatorioCategorias(mes));
 });
 
 app.get("/api/previsao", (req, res) => {
@@ -44,38 +64,25 @@ app.get("/api/previsao", (req, res) => {
   if (!mes || !/^\d{4}-\d{2}$/.test(mes)) {
     return res.status(400).json({ ok:false, erro:"mes inválido (use YYYY-MM)" });
   }
-  res.json(queries.getPrevisaoMes(mes));
+  res.json(queries.getPrevisao(mes));
 });
 
-app.post("/api/transacoes", (req, res) => {
-  const { descricao, valor, tipo, categoria_id, data } = req.body;
-  res.json(
-    queries.inserirTransacao(
-      descricao,
-      valor,
-      tipo,
-      categoria_id,
-      data
-    )
-  );
+app.get("/api/movimentacoes", (req, res) => {
+  const mes = req.query.mes;
+  if (!mes || !/^\d{4}-\d{2}$/.test(mes)) return res.status(400).json({ ok:false, erro:"mes inválido" });
+  res.json(queries.getMovimentacoes(mes));
 });
 
-app.delete("/api/transacoes/:id", (req, res) => {
-  res.json(queries.deleteTransacao(req.params.id));
+app.post("/api/movimentacoes", (req, res) => {
+  res.json(queries.criarMovimentacao(req.body));
 });
 
-app.put("/api/transacoes/:id", (req, res) => {
-  const { descricao, valor, tipo, categoria_id, data } = req.body;
-  res.json(
-    queries.updateTransacao(
-      req.params.id,
-      descricao,
-      valor,
-      tipo,
-      categoria_id,
-      data
-    )
-  );
+app.put("/api/movimentacoes/:id", (req, res) => {
+  res.json(queries.editarMovimentacao(req.params.id, req.body));
+});
+
+app.delete("/api/movimentacoes/:id", (req, res) => {
+  res.json(queries.deletarMovimentacao(req.params.id));
 });
 
 // ===== CARTÃO =====

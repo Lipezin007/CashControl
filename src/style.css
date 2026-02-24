@@ -4,3 +4,51 @@ form{display:grid; gap:8px; grid-template-columns: 1fr 160px 140px 1fr 160px 120
 input,select,button{padding:8px}
 table{width:100%; border-collapse:collapse}
 th,td{border-bottom:1px solid #eee; padding:8px; text-align:left}
+/* linha da nova transação */
+#form .linha-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* inputs/selects com tamanho decente */
+#form .linha-form input,
+#form .linha-form select,
+#form .linha-form button {
+  height: 34px;
+}
+
+/* área do cartão quando aparecer */
+#areaCartao {
+  display: none;           /* default escondido */
+  gap: 8px;
+  align-items: center;
+}
+
+#areaCartao.mostrar {
+  display: flex;           /* quando for cartão */
+}
+
+/* tamanhos recomendados */
+#descricao { width: 220px; }
+#valor { width: 110px; }
+#parcelasInput { width: 90px; }
+#jurosInput { width: 140px; }
+#cartaoSelect { width: 160px; }
+#origem { width: 160px; }
+
+/* alinhamento do formulário de nova transação */
+#form .linha-form{
+  display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;
+}
+
+/* rótulos do formulário */
+#form label{ display:flex; flex-direction:column; gap:4px; font-size:12px; }
+
+/* inputs/selects do formulário */
+#form input, #form select, #form button{ height:34px; }
+
+/* área do cartão quando aparecer */
+#areaCartao{ display:none; gap:10px; align-items:flex-end; }
+#areaCartao.mostrar{ display:flex; }

@@ -23,6 +23,46 @@ const tipoInput = document.querySelector("#tipo");
 const categoriaSelect = document.querySelector("#categoria");
 const dataInput = document.querySelector("#data");
 
+const origemInput = document.querySelector("#origem");
+const areaCartao = document.querySelector("#areaCartao");
+
+function toggleCartaoUI(){
+  if (!origemInput || !areaCartao) return;
+  areaCartao.classList.toggle("mostrar", origemInput.value === "cartao_credito");
+}
+origemInput?.addEventListener("change", toggleCartaoUI);
+toggleCartaoUI();
+
+dataInput.valueAsDate = new Date();
+
+const cartaoSelect = document.querySelector("#cartaoSelect"); // o select que fica na Nova transação
+
+async function carregarCartoesNoForm() {
+  if (!cartaoSelect) return;
+
+  const cartoes = await fetch("/api/cartoes").then(r => r.json());
+
+  cartaoSelect.innerHTML =
+    `<option value="">Selecione o cartão</option>` +
+    cartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
+}
+
+// MOSTRAR / ESCONDER AREA DE CARTÃO
+function toggleCartaoUI() {
+  if (!origemInput || !areaCartao) return;
+  areaCartao.classList.toggle("mostrar", origemInput.value === "cartao_credito");
+}
+
+// executa quando mudar o select
+if (origemInput) {
+  origemInput.addEventListener("change", toggleCartaoUI);
+}
+
+// executa quando abrir a página
+toggleCartaoUI();
+origemInput?.addEventListener("change", toggleCartaoUI);
+toggleCartaoUI(); // já aplica ao abrir a página
+
 dataInput.valueAsDate = new Date();
 
 async function carregarRelatorioCategorias() {
@@ -56,11 +96,12 @@ filtroMes?.addEventListener("input", async () => {
 });
 
 async function carregarTransacoes() {
+  if (!filtroMes?.value) return;
 
-  let url = "/api/movimentacoes?mes=" + filtroMes.value;
-const itens = await fetch(url).then(r => r.json());
+  const url = `/api/movimentacoes?mes=${encodeURIComponent(filtroMes.value)}`;
+  const trans = await fetch(url).then(r => r.json());
 
-  lista.innerHTML = itens.map(t => `
+  lista.innerHTML = trans.map(t => `
     <tr>
       <td>${t.data}</td>
       <td>${t.descricao}</td>
@@ -73,7 +114,6 @@ const itens = await fetch(url).then(r => r.json());
       </td>
     </tr>
   `).join("");
-  await carregarResumo();
 }
 
 // Delegação de eventos pros botões da tabela
@@ -86,14 +126,14 @@ lista.addEventListener("click", async (e) => {
 
   if (action === "del") {
     if (!confirm("Excluir essa transação?")) return;
-    await fetch(`/api/transacoes/${id}`, { method: "DELETE" });
+    await fetch(`/api/movimentacoes/${id}`, { method: "DELETE" });
     await refreshTudo();
     return;
   }
 
   if (action === "edit") {
     // pega a transação atual pra preencher o form
-    const trans = await fetch("/api/transacoes").then(r => r.json());
+    const trans = await fetch(`/api/movimentacoes?mes=${encodeURIComponent(filtroMes.value)}`).then(r=>r.json());
     const t = trans.find(x => x.id === id);
     if (!t) return;
 
@@ -118,6 +158,7 @@ form.addEventListener("submit", async (e) => {
     descricao: descricaoInput.value,
     valor: Number(valorInput.value),
     tipo: tipoInput.value,
+    origem: origemInput.value,
     categoria_id: Number(categoriaSelect.value),
     data: dataInput.value
   };
@@ -126,14 +167,14 @@ form.addEventListener("submit", async (e) => {
 
   if (id) {
     // EDITAR
-    await fetch(`/api/transacoes/${id}`, {
+    await fetch(`/api/movimentacoes/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
   } else {
     // CRIAR
-    await fetch("/api/transacoes", {
+    await fetch("/api/movimentacoes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
@@ -159,6 +200,8 @@ form.addEventListener("submit", async (e) => {
   await carregarRelatorioCategorias();
   await carregarGraficoCategorias();
   await carregarPrevisao();
+  await carregarCartoesNoForm();
+  await refreshTudo();
 })();
 // ====== RECORRÊNCIAS (visualização/teste) ======
 const formRec = document.querySelector("#formRec");
@@ -174,12 +217,6 @@ const rMes = document.querySelector("#r_mes");
 const btnGerar = document.querySelector("#btnGerar");
 const resumoRec = document.querySelector("#resumoRec");
 
-function mesAtualYYYYMM() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
-}
 if (rMes) rMes.value = mesAtualYYYYMM();
 
 async function carregarCategoriasRec() {
@@ -423,6 +460,7 @@ formCartao?.addEventListener("submit", async (e) => {
   });
   formCartao.reset();
   await carregarCartoes();
+  await carregarCartoesNoForm();
 });
 
 formCompra?.addEventListener("submit", async (e) => {
@@ -469,3 +507,4 @@ btnFat?.addEventListener("click", async () => {
   await carregarCategoriasCartao();
   await carregarCartoes();
 })();
+
