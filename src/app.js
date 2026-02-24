@@ -40,11 +40,7 @@ async function carregarCategorias() {
 }
 
 filtroMes?.addEventListener("input", async () => {
-  await carregarTransacoes();
-  await carregarResumo();
-  await carregarRelatorioCategorias();
-  await carregarGraficoCategorias();
-  await carregarPrevisao();
+  await refreshTudo();
 });
 
 async function carregarTransacoes() {
@@ -81,7 +77,7 @@ lista.addEventListener("click", async (e) => {
   if (action === "del") {
     if (!confirm("Excluir essa transação?")) return;
     await fetch(`/api/transacoes/${id}`, { method: "DELETE" });
-    await carregarTransacoes();
+    await refreshTudo();
     return;
   }
 
@@ -139,7 +135,7 @@ form.addEventListener("submit", async (e) => {
   idInput.value = "";
   dataInput.valueAsDate = new Date();
 
-  await carregarTransacoes();
+  await refreshTudo();
 });
 
 (async function init() {
@@ -158,8 +154,11 @@ const rValor = document.querySelector("#r_valor");
 const rTipo = document.querySelector("#r_tipo");
 const rCat = document.querySelector("#r_categoria");
 const rDia = document.querySelector("#r_dia");
+const rId = document.querySelector("#r_id");
+const rAtivo = document.querySelector("#r_ativo");
 const rMes = document.querySelector("#r_mes");
 const btnGerar = document.querySelector("#btnGerar");
+const resumoRec = document.querySelector("#resumoRec");
 
 function mesAtualYYYYMM() {
   const d = new Date();
@@ -174,6 +173,15 @@ async function carregarCategoriasRec() {
   rCat.innerHTML = cats.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
 }
 
+async function carregarResumoRecorrencias() {
+  if (!resumoRec) return;
+  const r = await fetch("/api/recorrencias/resumo").then(x => x.json());
+  resumoRec.innerHTML = `
+    <b>Só recorrências ativas:</b>
+    Entradas ${money(r.entradas)} | Saídas ${money(r.saidas)} | Saldo ${money(r.saldo)}
+  `;
+}
+
 async function carregarRecorrencias() {
   const recs = await fetch("/api/recorrencias").then(r => r.json());
   listaRec.innerHTML = recs.map(r => `
@@ -182,29 +190,81 @@ async function carregarRecorrencias() {
       <td>${r.descricao}</td>
       <td>${r.categoria ?? "-"}</td>
       <td>${r.tipo}</td>
-      <td>R$ ${Number(r.valor).toFixed(2)}</td>
+      <td>${money(r.valor)}</td>
       <td>${r.ativo ? "Sim" : "Não"}</td>
+      <td>
+        <button data-ra="edit" data-id="${r.id}">Editar</button>
+        <button data-ra="del" data-id="${r.id}">Excluir</button>
+      </td>
     </tr>
   `).join("");
+
+  await carregarResumoRecorrencias();
 }
 
 formRec?.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  await fetch("/api/recorrencias", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      descricao: rDesc.value,
-      valor: Number(rValor.value),
-      tipo: rTipo.value,
-      categoria_id: Number(rCat.value),
-      dia_mes: Number(rDia.value),
-    })
-  });
+  const body = {
+    descricao: rDesc.value,
+    valor: Number(rValor.value),
+    tipo: rTipo.value,
+    categoria_id: Number(rCat.value),
+    dia_mes: Number(rDia.value),
+    ativo: rAtivo.checked
+  };
+
+  const id = rId.value ? Number(rId.value) : null;
+
+  if (id) {
+    await fetch(`/api/recorrencias/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+  } else {
+    await fetch("/api/recorrencias", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+  }
 
   formRec.reset();
+  rId.value = "";
+  rAtivo.checked = true;
   await carregarRecorrencias();
+});
+
+listaRec?.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+
+  const action = btn.dataset.ra;
+  const id = Number(btn.dataset.id);
+
+  if (action === "del") {
+    if (!confirm("Excluir essa recorrência?")) return;
+    await fetch(`/api/recorrencias/${id}`, { method: "DELETE" });
+    await carregarRecorrencias();
+    return;
+  }
+
+  if (action === "edit") {
+    const recs = await fetch("/api/recorrencias").then(r => r.json());
+    const r = recs.find(x => x.id === id);
+    if (!r) return;
+
+    rId.value = r.id;
+    rDesc.value = r.descricao;
+    rValor.value = r.valor;
+    rTipo.value = r.tipo;
+    rDia.value = r.dia_mes;
+    rAtivo.checked = !!r.ativo;
+    if (r.categoria_id) rCat.value = r.categoria_id;
+
+    rDesc.focus();
+  }
 });
 
 btnGerar?.addEventListener("click", async () => {
@@ -213,8 +273,7 @@ btnGerar?.addEventListener("click", async () => {
     .then(r => r.json());
 
   alert(`Criadas: ${resp.criadas}`);
-  // recarrega transações (se você tiver a função)
-  if (typeof carregarTransacoes === "function") await carregarTransacoes();
+  await refreshTudo();
 });
 
 // chame isso no seu init()
@@ -222,6 +281,7 @@ btnGerar?.addEventListener("click", async () => {
   if (!formRec) return;
   await carregarCategoriasRec();
   await carregarRecorrencias();
+  await carregarResumoRecorrencias();
 })();
 
 async function carregarResumo(){
@@ -283,4 +343,17 @@ async function carregarPrevisao() {
     <b>Saídas previstas:</b> ${money(p.saidas_previstas)}<br/>
     <b>Saldo previsto (fim do mês):</b> ${money(p.saldo_previsto)}
   `;
+}
+
+async function refreshTudo() {
+  // lista + resumo
+  if (typeof carregarTransacoes === "function") await carregarTransacoes();
+  if (typeof carregarResumo === "function") await carregarResumo();
+
+  // relatório + gráfico (dependem do mês)
+  if (typeof carregarRelatorioCategorias === "function") await carregarRelatorioCategorias();
+  if (typeof carregarGraficoCategorias === "function") await carregarGraficoCategorias();
+
+  // previsão (se tiver)
+  if (typeof carregarPrevisao === "function") await carregarPrevisao();
 }

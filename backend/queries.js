@@ -137,7 +137,10 @@ module.exports = {
     setRecorrenciaAtiva,
     gerarRecorrencias,
     relatorioPorCategoria,
-    getPrevisaoMes
+    getPrevisaoMes,
+    deleteRecorrencia,
+    updateRecorrencia,
+    resumoRecorrencias
 };
 // RECORRÊNCIAS
 function getRecorrencias() {
@@ -158,6 +161,30 @@ function addRecorrencia(descricao, valor, tipo, categoria_id, dia_mes) {
 
 function setRecorrenciaAtiva(id, ativo) {
   return db.prepare(`UPDATE recorrencias SET ativo=? WHERE id=?`).run(ativo ? 1 : 0, id);
+}
+
+function deleteRecorrencia(id) {
+  return db.prepare(`DELETE FROM recorrencias WHERE id=?`).run(id);
+}
+
+function updateRecorrencia(id, descricao, valor, tipo, categoria_id, dia_mes, ativo) {
+  return db.prepare(`
+    UPDATE recorrencias
+    SET descricao=?, valor=?, tipo=?, categoria_id=?, dia_mes=?, ativo=?
+    WHERE id=?
+  `).run(descricao, valor, tipo, categoria_id ?? null, dia_mes, ativo ? 1 : 0, id);
+}
+
+function resumoRecorrencias() {
+  return db.prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) AS entradas,
+      COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) AS saidas,
+      COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) -
+      COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) AS saldo
+    FROM recorrencias
+    WHERE ativo = 1
+  `).get();
 }
 
 // gera transações do mês baseado nas recorrências ativas (sem duplicar)

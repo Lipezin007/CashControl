@@ -102,6 +102,29 @@ app.patch("/api/recorrencias/:id/ativo", (req, res) => {
   res.json(queries.setRecorrenciaAtiva(req.params.id, !!ativo));
 });
 
+app.get("/api/recorrencias/resumo", (req, res) => {
+  res.json(queries.resumoRecorrencias());
+});
+
+app.delete("/api/recorrencias/:id", (req, res) => {
+  res.json(queries.deleteRecorrencia(req.params.id));
+});
+
+app.put("/api/recorrencias/:id", (req, res) => {
+  const { descricao, valor, tipo, categoria_id, dia_mes, ativo } = req.body;
+  res.json(
+    queries.updateRecorrencia(
+      req.params.id,
+      descricao,
+      Number(valor),
+      tipo,
+      categoria_id ?? null,
+      Number(dia_mes),
+      !!ativo
+    )
+  );
+});
+
 // gerar transações do mês (ex: 2026-03)
 app.post("/api/recorrencias/gerar", (req, res) => {
   const mes = req.query.mes; // "YYYY-MM"
@@ -121,4 +144,4 @@ app.get("/api/resumo", (req, res) => {
 
 app.listen(3000, ()=>{
     console.log("Servidor rodando em http://localhost:3000");
-});
+}); 

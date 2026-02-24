@@ -41,8 +41,10 @@
   <!-- RECORRÊNCIAS -->
   <section class="card">
     <h2>Recorrências</h2>
+    <div id="resumoRec" style="margin:8px 0;"></div>
 
     <form id="formRec">
+      <input id="r_id" type="hidden" />
       <input id="r_descricao" placeholder="Descrição (ex: Salário)" required />
       <input id="r_valor" type="number" step="0.01" min="0.01" placeholder="Valor" required />
 
@@ -55,6 +57,11 @@
 
       <input id="r_dia" type="number" min="1" max="28" placeholder="Dia (1-28)" required />
 
+      <label style="display:flex; gap:6px; align-items:center;">
+        <input id="r_ativo" type="checkbox" checked />
+        Ativo
+      </label>
+
       <button type="submit">Salvar recorrência</button>
     </form>
 
@@ -66,7 +73,7 @@
     <table style="margin-top:10px;">
       <thead>
         <tr>
-          <th>Dia</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th>Ativo</th>
+          <th>Dia</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th>Ativo</th><th>Ações</th>
         </tr>
       </thead>
       <tbody id="listaRec"></tbody>
