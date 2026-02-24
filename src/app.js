@@ -43,6 +43,8 @@ filtroMes?.addEventListener("input", async () => {
   await carregarTransacoes();
   await carregarResumo();
   await carregarRelatorioCategorias();
+  await carregarGraficoCategorias();
+  await carregarPrevisao();
 });
 
 async function carregarTransacoes() {
@@ -145,6 +147,8 @@ form.addEventListener("submit", async (e) => {
   await carregarTransacoes();
   await carregarResumo();
   await carregarRelatorioCategorias();
+  await carregarGraficoCategorias();
+  await carregarPrevisao();
 })();
 // ====== RECORRÊNCIAS (visualização/teste) ======
 const formRec = document.querySelector("#formRec");
@@ -226,5 +230,57 @@ async function carregarResumo(){
     <b>Saldo total:</b> ${money(r.saldo)} |
     <b>Entradas:</b> ${money(r.entradas)} |
     <b>Saídas:</b> ${money(r.saidas)}
+  `;
+}
+const chartCanvas = document.querySelector("#chartCats");
+let chartCats = null;
+
+async function carregarGraficoCategorias() {
+  if (!chartCanvas) return;
+
+  const mes = (filtroMes && filtroMes.value) ? filtroMes.value : null;
+  if (!mes) return;
+
+  const dados = await fetch(`/api/relatorio-categorias?mes=${encodeURIComponent(mes)}`)
+    .then(r => r.json());
+
+  const labels = dados.map(x => x.categoria);
+  const saidas = dados.map(x => Number(x.total_saidas || 0));
+  const entradas = dados.map(x => Number(x.total_entradas || 0));
+
+  // destrói o antigo antes de criar outro (evita bug)
+  if (chartCats) chartCats.destroy();
+
+  chartCats = new Chart(chartCanvas, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        { label: "Saídas", data: saidas, backgroundColor: "#ef4444" },
+        { label: "Entradas", data: entradas, backgroundColor: "#22c55e" },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: "top" } },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+}
+
+const previsaoDiv = document.querySelector("#previsao");
+
+async function carregarPrevisao() {
+  if (!previsaoDiv || !filtroMes?.value) return;
+
+  const p = await fetch(`/api/previsao?mes=${encodeURIComponent(filtroMes.value)}`).then(r => r.json());
+
+  previsaoDiv.innerHTML = `
+    <b>Saldo atual:</b> ${money(p.saldo_atual)}<br/>
+    <b>Entradas previstas:</b> ${money(p.entradas_previstas)}<br/>
+    <b>Saídas previstas:</b> ${money(p.saidas_previstas)}<br/>
+    <b>Saldo previsto (fim do mês):</b> ${money(p.saldo_previsto)}
   `;
 }

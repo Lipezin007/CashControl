@@ -79,6 +79,38 @@ function getResumo(mesYYYYMM = null) {
   return mesYYYYMM ? stmt.get(mesYYYYMM) : stmt.get();
 }
 
+function getPrevisaoMes(mesYYYYMM) {
+  // soma recorrências ativas do mês (não depende de já ter gerado transações)
+  const rec = db.prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) AS entradas_previstas,
+      COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) AS saidas_previstas
+    FROM recorrencias
+    WHERE ativo = 1
+  `).get();
+
+  // saldo atual (geral)
+  const atual = db.prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) -
+      COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) AS saldo_atual
+    FROM transacoes
+  `).get();
+
+  // se você quiser “saldo atual só até o mês selecionado”, troca por:
+  // WHERE substr(data,1,7) <= ?
+
+  const saldo_previsto = Number(atual.saldo_atual) + Number(rec.entradas_previstas) - Number(rec.saidas_previstas);
+
+  return {
+    mes: mesYYYYMM,
+    saldo_atual: Number(atual.saldo_atual),
+    entradas_previstas: Number(rec.entradas_previstas),
+    saidas_previstas: Number(rec.saidas_previstas),
+    saldo_previsto: Number(saldo_previsto),
+  };
+}
+
 module.exports = {
     getCategorias,
     addCategoria,
@@ -91,7 +123,8 @@ module.exports = {
     addRecorrencia,
     setRecorrenciaAtiva,
     gerarRecorrencias,
-    relatorioPorCategoria
+    relatorioPorCategoria,
+    getPrevisaoMes
 };
 // RECORRÊNCIAS
 function getRecorrencias() {
