@@ -26,6 +26,24 @@ const dataInput = document.querySelector("#data");
 const origemInput = document.querySelector("#origem");
 const areaCartao = document.querySelector("#areaCartao");
 
+function ajustarTipoCartao() {
+
+  if (origemInput.value === "cartao_credito") {
+
+    tipoInput.value = "saida";
+    tipoInput.disabled = true;
+
+  } else {
+
+    tipoInput.disabled = false;
+
+  }
+
+}
+
+origemInput.addEventListener("change", ajustarTipoCartao);
+ajustarTipoCartao();
+
 function toggleCartaoUI(){
   if (!origemInput || !areaCartao) return;
   areaCartao.classList.toggle("mostrar", origemInput.value === "cartao_credito");
@@ -88,7 +106,10 @@ function money(v) {
 
 async function carregarCategorias() {
   const cats = await fetch("/api/categorias").then(r => r.json());
-  categoriaSelect.innerHTML = cats.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
+
+  categoriaSelect.innerHTML = cats.map(c =>
+    `<option value="${c.id}">${c.nome}</option>`
+  ).join("");
 }
 
 filtroMes?.addEventListener("input", async () => {
@@ -104,7 +125,9 @@ async function carregarTransacoes() {
   lista.innerHTML = trans.map(t => `
     <tr>
       <td>${t.data}</td>
-      <td>${t.descricao}</td>
+      <td>
+      ${t.parcela_num ? `${t.descricao} (${t.parcela_num}/${t.parcela_total})` : t  .descricao}
+      </td>
       <td>${t.categoria ?? "-"}</td>
       <td>${t.tipo}</td>
       <td>${money(t.valor)}</td>
@@ -153,15 +176,23 @@ lista.addEventListener("click", async (e) => {
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+const cartaoSelect = document.querySelector("#cartaoSelect");
+const parcelasInput = document.querySelector("#parcelasInput");
+const jurosInput = document.querySelector("#jurosInput");
+  const isCartao = origemInput.value === "cartao_credito";
 
-  const body = {
-    descricao: descricaoInput.value,
-    valor: Number(valorInput.value),
-    tipo: tipoInput.value,
-    origem: origemInput.value,
-    categoria_id: Number(categoriaSelect.value),
-    data: dataInput.value
-  };
+const body = {
+  descricao: descricaoInput.value,
+  valor: Number(valorInput.value),
+  tipo: tipoInput.value,
+  origem: origemInput.value,
+  categoria_id: Number(categoriaSelect.value),
+  data: dataInput.value,
+
+  cartao_id: isCartao ? Number(cartaoSelect.value) : null,
+  parcelas: isCartao ? Number(parcelasInput.value || 1) : 1,
+  juros_mensal: isCartao ? Number(jurosInput.value || 0) : 0
+};
 
   const id = idInput.value ? Number(idInput.value) : null;
 
@@ -335,12 +366,17 @@ btnGerar?.addEventListener("click", async () => {
   await carregarResumoRecorrencias();
 })();
 
-async function carregarResumo(){
-  const r = await fetch("/api/resumo").then(x => x.json());
+async function carregarResumo() {
+
+  const mes = filtroMes.value;
+
+  const r = await fetch(`/api/resumo?mes=${mes}`);
+  const dados = await r.json();
+
   resumoDiv.innerHTML = `
-    <b>Saldo total:</b> ${money(r.saldo)} |
-    <b>Entradas:</b> ${money(r.entradas)} |
-    <b>Saídas:</b> ${money(r.saidas)}
+    <p>Saldo total: ${money(dados.saldo)}</p>
+    <p>Entradas: ${money(dados.entradas)}</p>
+    <p>Saídas: ${money(dados.saidas)}</p>
   `;
 }
 const chartCanvas = document.querySelector("#chartCats");

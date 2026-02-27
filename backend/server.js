@@ -1,10 +1,41 @@
 const express = require("express");
+const db = require("./db");
 const path = require("path");
 
-const queries = require("./queries");
+const queries = require("./queries"); // importa todas as funções
 
 const app = express();
+function garantirCategoriasPadrao(){
 
+  const qtd = db.prepare(`
+    SELECT COUNT(*) as total FROM categorias
+  `).get().total;
+
+  if(qtd === 0){
+
+    const categorias = [
+      "Alimentação",
+      "Transporte",
+      "Moradia",
+      "Lazer",
+      "Saúde",
+      "Educação",
+      "Salário",
+      "Outros"
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO categorias (nome) VALUES (?)
+    `);
+
+    for(const c of categorias){
+      insert.run(c);
+    }
+
+    console.log("Categorias padrão criadas!");
+  }
+
+}
 app.use(express.json());
 
 app.use(express.static(path.join(__dirname, "..", "src")));
@@ -38,9 +69,9 @@ app.post("/api/categorias", (req, res) => {
   res.json(queries.addCategoria(nome));
 });
 
-app.get("/api/transacoes", (req, res) => {
+app.get("/api/movimentacoes", (req, res) => {
   const mes = req.query.mes || null;
-  res.json(queries.getTransacoes(mes));
+  res.json(queries.getmovimentacoes(mes));
 });
 
 app.get("/api/movimentacoes", (req, res) => {
@@ -156,10 +187,45 @@ app.post("/api/recorrencias/gerar", (req, res) => {
 });
 
 app.get("/api/resumo", (req, res) => {
-  const mes = req.query.mes || null;
-  res.json(queries.getResumo(mes));
+  const mes = req.query.mes;
+  const dados = queries.getResumo(mes);
+  res.json(dados);
 });
 
+app.post("/api/cartao/compra", (req,res)=>{
+
+  const r = queries.criarCompraCartao(req.body);
+
+  res.json(r);
+
+});
+
+//temporarios
+
+app.get("/debug-db", (req, res) => {
+
+  const rows = db.prepare(`
+    SELECT id, descricao, valor, tipo, data
+    FROM movimentacoes
+    ORDER BY data
+  `).all();
+
+  res.json(rows);
+
+});
+
+app.get("/debug", (req,res)=>{
+
+  const rows = db.prepare(`
+    SELECT id, descricao, valor, tipo, data
+    FROM movimentacoes
+  `).all();
+
+  res.json(rows);
+
+});
+
+garantirCategoriasPadrao();
 app.listen(3000, () => {
-  console.log("Servidor rodando em http://localhost:3000");
+  console.log("🚀 Servidor rodando em http://localhost:3000");
 });
