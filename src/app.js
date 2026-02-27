@@ -4,6 +4,7 @@ const resumoDiv = document.querySelector("#resumo");
 const relCats = document.querySelector("#relCats");
 
 const filtroMes = document.querySelector("#filtroMes");
+setMesAtualFatura();
 
 function mesAtualYYYYMM() {
   const d = new Date();
@@ -433,16 +434,13 @@ async function carregarPrevisao() {
 }
 
 async function refreshTudo() {
-  // lista + resumo
+
   if (typeof carregarTransacoes === "function") await carregarTransacoes();
   if (typeof carregarResumo === "function") await carregarResumo();
-
-  // relatório + gráfico (dependem do mês)
   if (typeof carregarRelatorioCategorias === "function") await carregarRelatorioCategorias();
   if (typeof carregarGraficoCategorias === "function") await carregarGraficoCategorias();
-
-  // previsão (se tiver)
   if (typeof carregarPrevisao === "function") await carregarPrevisao();
+  if (typeof carregarFatura === "function") await carregarFatura();
 }
 
 // ===== CARTÃO (visualização/teste) =====
@@ -475,6 +473,12 @@ async function carregarCartoes() {
   const opts = cartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
   if (ccCartao) ccCartao.innerHTML = opts;
   if (fatCartao) fatCartao.innerHTML = opts;
+}
+
+function setMesAtualFatura(){
+  const hoje = new Date();
+  const mes = hoje.toISOString().slice(0,7);
+  document.getElementById("fat_mes").value = mes;
 }
 
 async function carregarCategoriasCartao() {
@@ -542,5 +546,5 @@ btnFat?.addEventListener("click", async () => {
   if (!formCartao && !formCompra) return;
   await carregarCategoriasCartao();
   await carregarCartoes();
+  await carregarFatura();
 })();
-

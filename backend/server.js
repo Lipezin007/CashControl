@@ -200,30 +200,17 @@ app.post("/api/cartao/compra", (req,res)=>{
 
 });
 
+app.get("/api/fatura", (req,res)=>{
+  const {cartao, mes} = req.query;
+  res.json(queries.getFaturaCartao(cartao, mes));
+});
+
+app.get("/api/cartoes/:id/fatura", (req,res)=>{
+  const cartaoId = Number(req.params.id);
+  const mes = req.query.mes;
+  res.json(queries.getFaturaCartao(cartaoId, mes));
+});
 //temporarios
-
-app.get("/debug-db", (req, res) => {
-
-  const rows = db.prepare(`
-    SELECT id, descricao, valor, tipo, data
-    FROM movimentacoes
-    ORDER BY data
-  `).all();
-
-  res.json(rows);
-
-});
-
-app.get("/debug", (req,res)=>{
-
-  const rows = db.prepare(`
-    SELECT id, descricao, valor, tipo, data
-    FROM movimentacoes
-  `).all();
-
-  res.json(rows);
-
-});
 
 garantirCategoriasPadrao();
 app.listen(3000, () => {

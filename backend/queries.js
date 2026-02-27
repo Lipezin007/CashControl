@@ -573,6 +573,27 @@ function deletarMovimentacao(id) {
   return db.prepare(`DELETE FROM movimentacoes WHERE id=?`).run(Number(id));
 }
 
+function getLimiteCartao(cartao_id){
+
+  const cartao = db.prepare(`
+    SELECT limite
+    FROM cartoes
+    WHERE id=?
+  `).get(cartao_id);
+
+  const usado = db.prepare(`
+    SELECT COALESCE(SUM(valor),0) as total
+    FROM parcelas_cartao
+    WHERE cartao_id=? AND status!='paga'
+  `).get(cartao_id);
+
+  return {
+    limite: cartao.limite,
+    usado: usado.total,
+    disponivel: cartao.limite - usado.total
+  };
+}
+
 module.exports = {
 
   getMovimentacoes,
@@ -606,5 +627,6 @@ module.exports = {
   setParcelaStatus,
   deleteCompraCartao,
 
-  getSaldoAtual
+  getSaldoAtual,
+  getLimiteCartao
 };
