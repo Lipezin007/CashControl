@@ -1,10 +1,21 @@
 const lista = document.querySelector("#lista");
 const form = document.querySelector("#form");
 const resumoDiv = document.querySelector("#resumo");
-const relCats = document.querySelector("#relCats");
+const metaCategoria = document.querySelector("#meta_categoria");
+const metaValor = document.querySelector("#meta_valor");
+const btnMeta = document.querySelector("#btnMeta");
+const fatCartao = document.querySelector("#fat_cartao");
+const fatMes = document.querySelector("#fat_mes");
+const btnFat = document.querySelector("#btnFat");
+const fatTotal = document.querySelector("#fat_total");
+const fatItens = document.querySelector("#fat_itens");
+const metasBody = document.querySelector("#metasBody");
+const categoriaSelect = document.querySelector("#categoria");
 
 const filtroMes = document.querySelector("#filtroMes");
-setMesAtualFatura();
+
+const chartMensalCanvas = document.querySelector("#chartMensal");
+let chartMensal = null;
 
 function mesAtualYYYYMM() {
   const d = new Date();
@@ -21,7 +32,6 @@ const idInput = document.querySelector("#id");
 const descricaoInput = document.querySelector("#descricao");
 const valorInput = document.querySelector("#valor");
 const tipoInput = document.querySelector("#tipo");
-const categoriaSelect = document.querySelector("#categoria");
 const dataInput = document.querySelector("#data");
 
 const origemInput = document.querySelector("#origem");
@@ -29,30 +39,86 @@ const areaCartao = document.querySelector("#areaCartao");
 
 function ajustarTipoCartao() {
 
-  if (origemInput.value === "cartao_credito") {
+  if (!origemInput || !tipoInput) return;
 
+  if (origemInput.value === "cartao_credito") {
     tipoInput.value = "saida";
     tipoInput.disabled = true;
-
   } else {
-
     tipoInput.disabled = false;
-
   }
-
 }
 
-origemInput.addEventListener("change", ajustarTipoCartao);
+async function carregarGraficoMensal() {
+  if (!chartMensalCanvas) return;
+
+  const ano = new Date().getFullYear();
+
+  const dados = await fetch(`/api/mensal?ano=${ano}`)
+    .then(r => r.json());
+
+  const labels = dados.map(x => x.mes);
+  const entradas = dados.map(x => Number(x.entradas || 0));
+  const saidas = dados.map(x => Number(x.saidas || 0));
+  const saldo = entradas.map((v, i) => v - saidas[i]);
+
+  if (chartMensal) chartMensal.destroy();
+
+  chartMensal = new Chart(chartMensalCanvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Entradas",
+          data: entradas,
+          borderColor: "#22c55e",
+          backgroundColor: "rgba(34,197,94,0.2)",
+          tension: 0.3
+        },
+        {
+          label: "Saídas",
+          data: saidas,
+          borderColor: "#ef4444",
+          backgroundColor: "rgba(239,68,68,0.2)",
+          tension: 0.3
+        },
+        {
+          label: "Saldo",
+          data: saldo,
+          borderColor: "#00e5ff",
+          backgroundColor: "rgba(0,229,255,0.2)",
+          tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: "top" }
+      }
+    }
+  });
+}
+
+origemInput?.addEventListener("change", ajustarTipoCartao);
 ajustarTipoCartao();
 
-function toggleCartaoUI(){
+function toggleCartaoUI() {
   if (!origemInput || !areaCartao) return;
-  areaCartao.classList.toggle("mostrar", origemInput.value === "cartao_credito");
+
+  if (origemInput.value === "cartao_credito") {
+    areaCartao.classList.add("mostrar");
+  } else {
+    areaCartao.classList.remove("mostrar");
+  }
 }
 origemInput?.addEventListener("change", toggleCartaoUI);
 toggleCartaoUI();
 
-dataInput.valueAsDate = new Date();
+if (dataInput) {
+  dataInput.valueAsDate = new Date();
+}
 
 const cartaoSelect = document.querySelector("#cartaoSelect"); // o select que fica na Nova transação
 
@@ -66,6 +132,23 @@ async function carregarCartoesNoForm() {
     cartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
 }
 
+const dashboardDiv = document.querySelector("#dashboard");
+
+async function carregarDashboard(){
+
+  const mes = filtroMes.value;
+
+  const d = await fetch(`/api/dashboard?mes=${mes}`)
+    .then(r=>r.json());
+
+  dashboardDiv.innerHTML = `
+    <p><b>Saldo atual:</b> ${money(d.saldo)}</p>
+    <p><b>Entradas do mês:</b> ${money(d.entradas)}</p>
+    <p><b>Saídas do mês:</b> ${money(d.saidas)}</p>
+    <p><b>Fatura do cartão:</b> ${money(d.fatura)}</p>
+  `;
+}
+
 // MOSTRAR / ESCONDER AREA DE CARTÃO
 function toggleCartaoUI() {
   if (!origemInput || !areaCartao) return;
@@ -74,7 +157,7 @@ function toggleCartaoUI() {
 
 // executa quando mudar o select
 if (origemInput) {
-  origemInput.addEventListener("change", toggleCartaoUI);
+  origemInput?.addEventListener("change", toggleCartaoUI);
 }
 
 // executa quando abrir a página
@@ -82,23 +165,39 @@ toggleCartaoUI();
 origemInput?.addEventListener("change", toggleCartaoUI);
 toggleCartaoUI(); // já aplica ao abrir a página
 
-dataInput.valueAsDate = new Date();
+if (dataInput) {
+  dataInput.valueAsDate = new Date();
+}
 
 async function carregarRelatorioCategorias() {
-  if (!relCats) return;
+  if (!metasBody) return;
 
   const mes = (filtroMes && filtroMes.value) ? filtroMes.value : null;
-  if (!mes) { relCats.innerHTML = ""; return; }
+  if (!mes) { metasBody.innerHTML = ""; return; }
 
-  const dados = await fetch(`/api/relatorio-categorias?mes=${encodeURIComponent(mes)}`).then(r => r.json());
+  const dados = await fetch(
+    `/api/relatorio-categorias?mes=${encodeURIComponent(mes)}`
+  ).then(r => r.json());
 
-  relCats.innerHTML = dados.map(x => `
-    <tr>
-      <td>${x.categoria}</td>
-      <td>${money(x.total_saidas)}</td>
-      <td>${money(x.total_entradas)}</td>
-    </tr>
-  `).join("");
+  metasBody.innerHTML = dados.map(x => {
+
+    const perc = x.meta > 0
+      ? ((x.total_saidas / x.meta) * 100).toFixed(0)
+      : 0;
+
+    const alerta = perc >= 100 ? "⚠" : "";
+
+    return `
+      <tr>
+        <td>${x.categoria}</td>
+        <td>${money(x.total_saidas)}</td>
+        <td>${money(x.total_entradas)}</td>
+        <td>${money(x.meta)}</td>
+        <td>${perc}% ${alerta}</td>
+      </tr>
+    `;
+
+  }).join("");
 }
 
 function money(v) {
@@ -141,7 +240,7 @@ async function carregarTransacoes() {
 }
 
 // Delegação de eventos pros botões da tabela
-lista.addEventListener("click", async (e) => {
+lista?.addEventListener("click", async (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
 
@@ -175,7 +274,7 @@ lista.addEventListener("click", async (e) => {
   }
 });
 
-form.addEventListener("submit", async (e) => {
+form?.addEventListener("submit", async (e) => {
   e.preventDefault();
 const cartaoSelect = document.querySelector("#cartaoSelect");
 const parcelasInput = document.querySelector("#parcelasInput");
@@ -216,7 +315,9 @@ const body = {
   // limpa form e recarrega
   form.reset();
   idInput.value = "";
+  if (dataInput) {
   dataInput.valueAsDate = new Date();
+}
 
   await refreshTudo();
 });
@@ -233,6 +334,7 @@ const body = {
   await carregarGraficoCategorias();
   await carregarPrevisao();
   await carregarCartoesNoForm();
+  await carregarCategoriasMeta();
   await refreshTudo();
 })();
 // ====== RECORRÊNCIAS (visualização/teste) ======
@@ -369,10 +471,14 @@ btnGerar?.addEventListener("click", async () => {
 
 async function carregarResumo() {
 
+  if (!filtroMes) return;
+
   const mes = filtroMes.value;
 
   const r = await fetch(`/api/resumo?mes=${mes}`);
   const dados = await r.json();
+
+  if (!resumoDiv) return;
 
   resumoDiv.innerHTML = `
     <p>Saldo total: ${money(dados.saldo)}</p>
@@ -433,6 +539,135 @@ async function carregarPrevisao() {
   `;
 }
 
+async function carregarFatura() {
+
+  if (!fatCartao || !fatMes) return;
+
+  const cartaoId = Number(fatCartao.value);
+  const mes = fatMes.value;
+
+  if (!cartaoId || !mes) return;
+
+  const resp = await fetch(
+    `/api/cartoes/${cartaoId}/fatura?mes=${encodeURIComponent(mes)}`
+  );
+
+  if (!resp.ok) {
+    console.error("Erro ao buscar fatura");
+    return;
+  }
+
+  const dados = await resp.json();
+
+  fatTotal.innerHTML =
+    `<b>Total da fatura:</b> ${money(dados.total)} (mostrar como negativo)`;
+
+  fatItens.innerHTML = dados.itens.map(i => `
+    <tr>
+      <td>${i.numero_parcela}/${i.total_parcelas}</td>
+      <td>${i.descricao}</td>
+      <td>${i.categoria ?? "-"}</td>
+      <td>${i.mes_ref}</td>
+      <td>${money(i.valor)}</td>
+      <td>${i.status}</td>
+    </tr>
+  `).join("");
+}
+btnFat?.addEventListener("click", carregarFatura);
+
+async function carregarMetas(){
+  const mes = filtroMes.value;
+  const dados = await fetch(`/api/metas?mes=${mes}`).then(r=>r.json());
+
+  metasBody.innerHTML = dados.map(m => {
+
+    const perc = m.valor_meta > 0
+      ? ((m.gasto_mes / m.valor_meta) * 100).toFixed(0)
+      : 0;
+
+    const alerta = perc > 100 ? "⚠" : "";
+
+    return `
+      <tr>
+        <td>${m.categoria}</td>
+        <td>${money(m.valor_meta)}</td>
+        <td>${money(m.gasto_mes)}</td>
+        <td>${perc}% ${alerta}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+async function carregarCategoriasMeta() {
+  const cats = await fetch("/api/categorias").then(r => r.json());
+
+  metaCategoria.innerHTML =
+    `<option value="">Selecione</option>` +
+    cats.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
+}
+
+btnMeta?.addEventListener("click", async () => {
+
+  await fetch("/api/metas", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      categoria_id: Number(metaCategoria.value),
+      valor_meta: Number(metaValor.value),
+      mes: filtroMes.value
+    })
+  });
+
+  metaValor.value = "";
+  await refreshTudo();
+});
+
+const controleDiv = document.querySelector("#controleCartao");
+
+async function carregarControleCartao() {
+
+  const cartaoId = fatCartao.value;
+  if (!cartaoId) return;
+
+  const dados = await fetch(
+    `/api/cartoes/${cartaoId}/controle`
+  ).then(r => r.json());
+
+  if (!dados) return;
+
+  const cor =
+    dados.percentual >= 80 ? "red" :
+    dados.percentual >= 50 ? "orange" :
+    "green";
+
+  controleDiv.innerHTML = `
+  <h3>${dados.nome}</h3>
+  <div class="limite-info">
+    <div>
+      <span>Limite</span>
+      <strong>${money(dados.limite)}</strong>
+    </div>
+    <div>
+      <span>Usado</span>
+      <strong>${money(dados.usado)}</strong>
+    </div>
+    <div>
+      <span>Disponível</span>
+      <strong>${money(dados.disponivel)}</strong>
+    </div>
+  </div>
+  <div class="barra-limite">
+    <div class="barra-preenchimento" 
+         style="width:${dados.percentual}%; background:${cor};">
+    </div>
+  </div>
+  <div class="percentual-uso" style="color:${cor}">
+    ${dados.percentual.toFixed(0)}% utilizado
+  </div>
+`;
+}
+fatCartao?.addEventListener("change", carregarControleCartao);
+
 async function refreshTudo() {
 
   if (typeof carregarTransacoes === "function") await carregarTransacoes();
@@ -441,6 +676,9 @@ async function refreshTudo() {
   if (typeof carregarGraficoCategorias === "function") await carregarGraficoCategorias();
   if (typeof carregarPrevisao === "function") await carregarPrevisao();
   if (typeof carregarFatura === "function") await carregarFatura();
+  if (typeof carregarDashboard === "function") await carregarDashboard();
+  if (typeof carregarControleCartao === "function") await carregarControleCartao();
+  if (typeof carregarGraficoMensal === "function") await carregarGraficoMensal();
 }
 
 // ===== CARTÃO (visualização/teste) =====
@@ -458,12 +696,6 @@ const ccParc = document.querySelector("#cc_parc");
 const ccJuros = document.querySelector("#cc_juros");
 const ccData = document.querySelector("#cc_data");
 const ccCat = document.querySelector("#cc_cat");
-
-const fatCartao = document.querySelector("#fat_cartao");
-const fatMes = document.querySelector("#fat_mes");
-const btnFat = document.querySelector("#btnFat");
-const fatTotal = document.querySelector("#fat_total");
-const fatItens = document.querySelector("#fat_itens");
 
 if (fatMes) fatMes.value = mesAtualYYYYMM();
 if (ccData) ccData.valueAsDate = new Date();
@@ -542,9 +774,81 @@ btnFat?.addEventListener("click", async () => {
   `).join("");
 });
 
+document?.addEventListener("DOMContentLoaded", () => {
+
+  if (typeof setMesAtualFatura === "function") {
+    setMesAtualFatura();
+  }
+
+  if (typeof refreshTudo === "function") {
+    refreshTudo();
+  }
+
+});
+
 (async function initCartao() {
   if (!formCartao && !formCompra) return;
   await carregarCategoriasCartao();
   await carregarCartoes();
   await carregarFatura();
 })();
+
+const modalCartao = document.getElementById("modalCartao");
+const abrirModalCartao = document.getElementById("abrirModalCartao");
+const fecharModalCartao = document.getElementById("fecharModalCartao");
+
+abrirModalCartao?.addEventListener("click", () => {
+  modalCartao.style.display = "flex";
+});
+
+fecharModalCartao?.addEventListener("click", () => {
+  modalCartao.style.display = "none";
+});
+
+window.addEventListener("click", (e) => {
+  if (e.target === modalCartao) {
+    modalCartao.style.display = "none";
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    modalCartao.style.display = "none";
+  }
+});
+
+const modalRec = document.getElementById("modalRec");
+const abrirModalRec = document.getElementById("abrirModalRec");
+const fecharModalRec = document.getElementById("fecharModalRec");
+
+abrirModalRec?.addEventListener("click", () => {
+  modalRec.style.display = "flex";
+});
+
+fecharModalRec?.addEventListener("click", () => {
+  modalRec.style.display = "none";
+});
+
+window.addEventListener("click", (e) => {
+  if (e.target === modalRec) {
+    modalRec.style.display = "none";
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    modalRec.style.display = "none";
+  }
+});
+const btnPDF = document.getElementById("btnPDF");
+
+btnPDF?.addEventListener("click", () => {
+  const mes = filtroMes.value;
+
+  if (!mes) {
+    alert("Selecione um mês");
+    return;
+  }
+
+  window.open(`/api/relatorio-pdf?mes=${mes}`, "_blank");
+});

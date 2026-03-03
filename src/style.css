@@ -1,54 +1,395 @@
-body{font-family:Arial, sans-serif; max-width:900px; margin:20px auto; padding:0 12px}
-.card{border:1px solid #ddd; padding:12px; border-radius:10px; margin:12px 0}
-form{display:grid; gap:8px; grid-template-columns: 1fr 160px 140px 1fr 160px 120px}
-input,select,button{padding:8px}
-table{width:100%; border-collapse:collapse}
-th,td{border-bottom:1px solid #eee; padding:8px; text-align:left}
-/* linha da nova transação */
-#form .linha-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+/* =========================
+   BASE
+========================= */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top left, #0f1b2e, #060c18 60%);
+  color: #e6edf7;
+}
+
+/* =========================
+   TÍTULO
+========================= */
+
+.titulo {
+  text-align: center;
+  padding: 25px 0;
+  font-size: 26px;
+  letter-spacing: 1px;
+  color: #00e5ff;
+}
+
+/* =========================
+   GRID PRINCIPAL
+========================= */
+
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 20px;
+  padding: 0 25px 40px 25px;
+}
+
+/* =========================
+   CARDS
+========================= */
+
+.card {
+  background: linear-gradient(145deg, #0e1625, #0b1320);
+  border-radius: 14px;
+  padding: 20px;
+  border: 1px solid rgba(0, 229, 255, 0.15);
+  box-shadow: 0 0 25px rgba(0, 229, 255, 0.05);
+  transition: 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 30px rgba(0, 229, 255, 0.15);
+}
+
+.card h2 {
+  margin-top: 0;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  color: #00e5ff;
+}
+
+/* =========================
+   TAMANHOS DOS CARDS
+========================= */
+
+.small { grid-column: span 3; }
+.wide { grid-column: span 6; }
+
+.card:not(.small):not(.wide) {
+  grid-column: span 4;
+}
+
+/* =========================
+   FORMULÁRIOS
+========================= */
+
+form {
+  display: grid;
+  gap: 10px;
+}
+
+form#form {
+  grid-template-columns: repeat(6, 1fr);
   align-items: center;
 }
 
-/* inputs/selects com tamanho decente */
-#form .linha-form input,
-#form .linha-form select,
-#form .linha-form button {
-  height: 34px;
+form#form input,
+form#form select {
+  grid-column: span 2;
 }
 
-/* área do cartão quando aparecer */
+form#form button {
+  grid-column: span 2;
+}
+
+/* Inputs padrão */
+
+input, select {
+  background: #0f1c30;
+  border: 1px solid rgba(0, 229, 255, 0.15);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 13px;
+  color: #fff;
+  transition: 0.2s;
+}
+
+input:focus, select:focus {
+  border-color: #00e5ff;
+  box-shadow: 0 0 10px rgba(0,229,255,0.3);
+  outline: none;
+}
+
+/* Botões */
+
+button {
+  background: #00e5ff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+  transition: 0.2s;
+}
+
+button:hover {
+  background: #00c8e0;
+}
+
+/* =========================
+   TABELAS
+========================= */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+th {
+  text-align: left;
+  padding: 8px;
+  font-weight: 500;
+  color: #00e5ff;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+td {
+  padding: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+tr:hover {
+  background: rgba(0,229,255,0.05);
+}
+
+/* =========================
+   NÚMEROS IMPORTANTES
+========================= */
+
+#resumo p,
+#dashboard p,
+#previsao p {
+  margin: 6px 0;
+  font-size: 13px;
+}
+
+#resumo b,
+#dashboard b,
+#previsao b {
+  color: #00e5ff;
+}
+
+/* =========================
+   RESPONSIVO
+========================= */
+
+@media (max-width: 1400px) {
+  .small { grid-column: span 4; }
+  .wide { grid-column: span 12; }
+  .card:not(.small):not(.wide) { grid-column: span 6; }
+}
+
+@media (max-width: 900px) {
+  .dashboard {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .small, .wide, .card {
+    grid-column: span 6;
+  }
+}
+/* =========================
+   NOVA TRANSAÇÃO ORGANIZADA
+========================= */
+
+form#form {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+form#form input,
+form#form select {
+  width: 100%;
+}
+
 #areaCartao {
-  display: none;           /* default escondido */
-  gap: 8px;
-  align-items: center;
+  display: none !important;
 }
 
 #areaCartao.mostrar {
-  display: flex;           /* quando for cartão */
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
-/* tamanhos recomendados */
-#descricao { width: 220px; }
-#valor { width: 110px; }
-#parcelasInput { width: 90px; }
-#jurosInput { width: 140px; }
-#cartaoSelect { width: 160px; }
-#origem { width: 160px; }
-
-/* alinhamento do formulário de nova transação */
-#form .linha-form{
-  display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;
+form#form button {
+  grid-column: span 3;
+  margin-top: 10px;
+  padding: 10px;
+  font-size: 14px;
 }
 
-/* rótulos do formulário */
-#form label{ display:flex; flex-direction:column; gap:4px; font-size:12px; }
+form#form > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 
-/* inputs/selects do formulário */
-#form input, #form select, #form button{ height:34px; }
+label {
+  font-size: 11px;
+  color: #00e5ff;
+  letter-spacing: 0.5px;
+}
+/* =========================
+   TOPBAR
+========================= */
 
-/* área do cartão quando aparecer */
-#areaCartao{ display:none; gap:10px; align-items:flex-end; }
-#areaCartao.mostrar{ display:flex; }
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+}
+
+.filtro-global {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filtro-global label {
+  font-size: 11px;
+  color: #00e5ff;
+}
+/* =========================
+   BOTÃO SECUNDÁRIO
+========================= */
+
+.btn-secundario {
+  background: transparent;
+  border: 1px solid #00e5ff;
+  color: #00e5ff;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 15px;
+}
+
+.btn-secundario:hover {
+  background: rgba(0,229,255,0.1);
+}
+
+/* MODAL */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #0f1c30;
+  padding: 25px;
+  border-radius: 12px;
+  width: 360px;
+  border: 1px solid rgba(0,229,255,0.2);
+  box-shadow: 0 0 40px rgba(0,229,255,0.2);
+  animation: aparecer 0.2s ease;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.fechar {
+  cursor: pointer;
+  font-size: 18px;
+}
+
+@keyframes aparecer {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+/* =========================
+   CONTROLE DE LIMITE BONITO
+========================= */
+
+.limite-info {
+  display: flex;
+  justify-content: space-between;
+  margin: 15px 0;
+  font-size: 13px;
+}
+
+.limite-info span {
+  display: block;
+  font-size: 11px;
+  color: #00e5ff;
+}
+
+.limite-info strong {
+  font-size: 14px;
+}
+
+.barra-limite {
+  width: 100%;
+  height: 10px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 10px 0;
+}
+
+.barra-preenchimento {
+  height: 100%;
+  transition: width 0.4s ease;
+  border-radius: 10px;
+}
+
+.percentual-uso {
+  text-align: right;
+  font-size: 12px;
+  font-weight: bold;
+}
+.form-rec {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.form-rec input,
+.form-rec select {
+  width: 100%;
+}
+
+.ativo-rec {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.gerar-rec {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.modal-grande {
+  width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.form-rec {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 15px;
+}

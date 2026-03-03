@@ -1,90 +1,240 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Controle Financeiro</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Controle Financeiro</title>
+<link rel="stylesheet" href="style.css" />
 </head>
-<body>
-  <h1>Controle Financeiro</h1>
 
-  <!-- RESUMO (apenas 1!) -->
-  <section class="card">
+<body>
+
+<div class="topbar">
+  <h1 class="titulo">Controle Financeiro</h1>
+
+  
+  <button id="btnPDF" class="btn-secundario">
+  📄 Gerar PDF do mês
+</button>
+
+  <div class="filtro-global">
+    <label>Mês</label>
+    <input type="month" id="filtroMes">
+  </div>
+
+</div>
+
+<div class="dashboard">
+
+  <section class="card wide">
+  <h2>Nova Transação</h2>
+
+  <button id="abrirModalRec" class="btn-secundario">
+  + Nova Recorrência
+  </button>
+
+  <form id="form">
+    <input id="id" type="hidden">
+
+    <div>
+      <label>Descrição</label>
+      <input id="descricao" placeholder="Ex: Salário, Mercado..." required>
+    </div>
+
+    <div>
+      <label>Valor (R$)</label>
+      <input id="valor" type="number" step="0.01" required>
+    </div>
+
+    <div>
+      <label>Tipo</label>
+      <select id="tipo">
+        <option value="entrada">Entrada</option>
+        <option value="saida">Saída</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Origem</label>
+      <select id="origem">
+        <option value="pix">PIX</option>
+        <option value="debito">Débito</option>
+        <option value="dinheiro">Dinheiro</option>
+        <option value="cartao_credito">Cartão de Crédito</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Categoria</label>
+      <select id="categoria"></select>
+    </div>
+
+    <div>
+      <label>Data</label>
+      <input id="data" type="date">
+    </div>
+
+    <div id="areaCartao">
+      <div>
+        <label>Cartão</label>
+        <select id="cartaoSelect"></select>
+      </div>
+
+      <div>
+        <label>Parcelas</label>
+        <input id="parcelasInput" type="number" value="1">
+      </div>
+
+      <div>
+        <label>Juros Mensal</label>
+        <input id="jurosInput" type="number" step="0.001" value="0">
+      </div>
+    </div>
+
+    <button type="submit">Salvar</button>
+  </form>
+</section>
+
+  <!-- RESUMO -->
+  <section class="card small">
     <h2>Resumo</h2>
     <div id="resumo"></div>
   </section>
 
-  <!-- NOVA TRANSAÇÃO -->
-  <section class="card">
-    <h2>Nova transação</h2>
-
-    <form id="form">
-      <div class="linha-form">
-        <label>
-          Origem
-          <select id="origem" required>
-            <option value="pix">PIX</option>
-            <option value="debito">Débito</option>
-            <option value="dinheiro">Dinheiro</option>
-            <option value="cartao_credito">Cartão de crédito</option>
-          </select>
-        </label>
-
-        <div id="areaCartao">
-          <label>
-            Cartão
-            <select id="cartaoSelect"></select>
-          </label>
-          <label>
-            Parcelas
-            <input id="parcelasInput" type="number" min="1" max="48" value="1" />
-          </label>
-          <label>
-            Juros mensal
-            <input id="jurosInput" type="number" step="0.001" value="0" placeholder="ex: 0.02" />
-          </label>
-        </div>
-
-        <input id="id" type="hidden" />
-
-        <label>
-          Descrição
-          <input id="descricao" placeholder="ex: PS5 / Salário" required />
-        </label>
-        <label>
-          Valor
-          <input id="valor" type="number" step="0.01" min="0.01" placeholder="ex: 3500" required />
-        </label>
-        <label>
-          Tipo
-          <select id="tipo" required>
-            <option value="entrada">Entrada</option>
-            <option value="saida">Saída</option>
-          </select>
-        </label>
-        <label>
-          Categoria
-          <select id="categoria"></select>
-        </label>
-        <label>
-          Data
-          <input id="data" type="date" required />
-        </label>
-        <button type="submit">Salvar</button>
-      </div>
-    </form>
+  <!-- PREVISÃO -->
+  <section class="card small">
+    <h2>Previsão</h2>
+    <div id="previsao"></div>
   </section>
 
-  <!-- RECORRÊNCIAS -->
-  <section class="card">
-    <h2>Recorrências</h2>
-    <div id="resumoRec" style="margin:8px 0;"></div>
+  <!-- DASHBOARD -->
+  <section class="card small">
+    <h2>Dashboard</h2>
+    <div id="dashboard"></div>
+  </section>
 
-    <form id="formRec">
-      <input id="r_id" type="hidden" />
-      <input id="r_descricao" placeholder="Descrição (ex: Salário)" required />
-      <input id="r_valor" type="number" step="0.01" min="0.01" placeholder="Valor" required />
+  <!-- GRÁFICO -->
+  <section class="card wide">
+    <h2>Gráfico por categoria</h2>
+    <canvas id="chartCats"></canvas>
+  </section>
+
+  <!-- GRÁFICO MENSAL -->
+<section class="card wide">
+  <h2>Evolução Mensal</h2>
+  <canvas id="chartMensal" height="100"></canvas>
+</section>
+
+  <!-- METAS -->
+  <section class="card">
+    <h2>Metas</h2>
+    <select id="meta_categoria"></select>
+    <input type="number" id="meta_valor" placeholder="Valor da meta">
+    <button id="btnMeta">Salvar</button>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Categoria</th>
+          <th>Saídas</th>
+          <th>Entradas</th>
+          <th>Meta</th>
+          <th>%</th>
+        </tr>
+      </thead>
+      <tbody id="metasBody"></tbody>
+    </table>
+  </section>
+
+<!-- CARTÃO -->
+<section class="card">
+  <h2>Cartão</h2>
+
+  <button id="abrirModalCartao" class="btn-secundario">
+    + Criar Cartão
+  </button>
+
+  <div class="linha-cartao">
+    <select id="fat_cartao"></select>
+    <input type="month" id="fat_mes">
+    <button id="btnFat">Ver fatura</button>
+  </div>
+
+  <div id="controleCartao"></div>
+  <div id="fat_total"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Parc</th>
+        <th>Descrição</th>
+        <th>Categoria</th>
+        <th>Mês</th>
+        <th>Valor</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="fat_itens"></tbody>
+  </table>
+</section>
+
+
+  <!-- TRANSAÇÕES -->
+  <section class="card wide">
+    <h2>Transações</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Descrição</th>
+          <th>Categoria</th>
+          <th>Tipo</th>
+          <th>Valor</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="lista"></tbody>
+    </table>
+  </section>
+
+<!-- MODAL'S -->
+
+<!-- MODAL CRIAR CARTÃO -->
+<div id="modalCartao" class="modal">
+  <div class="modal-content">
+
+    <div class="modal-header">
+      <h3>Criar Cartão</h3>
+      <span id="fecharModalCartao" class="fechar">&times;</span>
+    </div>
+
+    <form id="formCartao">
+      <input id="c_nome" placeholder="Nome do cartão" required>
+      <input id="c_limite" type="number" step="0.01" placeholder="Limite">
+      <input id="c_fech" type="number" min="1" max="28" placeholder="Fechamento">
+      <input id="c_venc" type="number" min="1" max="28" placeholder="Vencimento">
+      <button type="submit">Criar</button>
+    </form>
+
+  </div>
+</div>
+
+<!-- MODAL RECORRÊNCIAS -->
+<div id="modalRec" class="modal">
+  <div class="modal-content modal-grande">
+
+    <div class="modal-header">
+      <h3>Recorrências</h3>
+      <span id="fecharModalRec" class="fechar">&times;</span>
+    </div>
+
+    <div id="resumoRec" style="margin-bottom:10px;"></div>
+
+    <form id="formRec" class="form-rec">
+      <input id="r_id" type="hidden">
+
+      <input id="r_descricao" placeholder="Descrição (ex: Salário)" required>
+      <input id="r_valor" type="number" step="0.01" placeholder="Valor" required>
 
       <select id="r_tipo" required>
         <option value="entrada">Entrada</option>
@@ -93,101 +243,42 @@
 
       <select id="r_categoria"></select>
 
-      <input id="r_dia" type="number" min="1" max="28" placeholder="Dia (1-28)" required />
+      <input id="r_dia" type="number" min="1" max="28" placeholder="Dia (1-28)" required>
 
-      <label style="display:flex; gap:6px; align-items:center;">
-        <input id="r_ativo" type="checkbox" checked />
+      <label class="ativo-rec">
+        <input id="r_ativo" type="checkbox" checked>
         Ativo
       </label>
 
-      <button type="submit">Salvar recorrência</button>
+      <button type="submit">Salvar</button>
     </form>
 
-    <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-      <input id="r_mes" placeholder="YYYY-MM (ex: 2026-03)" />
+    <div class="gerar-rec">
+      <input id="r_mes" type="month">
       <button id="btnGerar" type="button">Gerar mês</button>
     </div>
 
-    <table style="margin-top:10px;">
+    <table>
       <thead>
         <tr>
-          <th>Dia</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th>Ativo</th><th>Ações</th><th>Origem</th>
+          <th>Dia</th>
+          <th>Descrição</th>
+          <th>Categoria</th>
+          <th>Tipo</th>
+          <th>Valor</th>
+          <th>Ativo</th>
+          <th>Ações</th>
         </tr>
       </thead>
       <tbody id="listaRec"></tbody>
     </table>
-  </section>
 
-<div style="margin-bottom:10px;">
-  <label>Filtrar por mês:</label>
-  <input type="month" id="filtroMes">
+  </div>
 </div>
 
-<section class="card">
-  <h2>Relatório por categoria</h2>
-  <table>
-    <thead>
-      <tr><th>Categoria</th><th>Saídas</th><th>Entradas</th></tr>
-    </thead>
-    <tbody id="relCats"></tbody>
-  </table>
-</section>
-<section class="card">
-  <h2>Gráfico por categoria</h2>
-  <canvas id="chartCats" height="120"></canvas>
-</section>
-
-<section class="card">
-  <h2>Previsão do mês</h2>
-  <div id="previsao"></div>
-</section>
-
-<section class="card">
-  <h2>Cartão de crédito</h2>
-
-  <form id="formCartao">
-    <input id="c_nome" placeholder="Nome do cartão" required />
-    <input id="c_limite" type="number" step="0.01" placeholder="Limite" />
-    <input id="c_fech" type="number" min="1" max="28" placeholder="Fechamento (1-28)" required />
-    <input id="c_venc" type="number" min="1" max="28" placeholder="Vencimento (1-28)" required />
-    <button type="submit">Criar cartão</button>
-  </form>
-
-  <hr/>
-  
-  <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-    <select id="fat_cartao"></select>
-    <input type="month" id="fat_mes" />
-    <button id="btnFat" type="button">Ver fatura</button>
-  </div>
-
-  <div id="fat_total" style="margin:10px 0;"></div>
-
-  <table>
-    <thead>
-      <tr>
-        <th>Parc</th><th>Descrição</th><th>Categoria</th><th>Mês</th><th>Valor</th><th>Status</th>
-      </tr>
-    </thead>
-    <tbody id="fat_itens"></tbody>
-  </table>
-</section>
-
-<!-- Chart.js (CDN) -->
+</div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- TRANSAÇÕES -->
-  <section class="card">
-    <h2>Transações</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="lista"></tbody>
-    </table>
-  </section>
+<script src="app.js"></script>
 
-  <script src="app.js"></script>
 </body>
 </html>

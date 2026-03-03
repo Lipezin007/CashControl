@@ -157,9 +157,10 @@ function gerarRecorrencias(mesYYYYMM) {
   const recorrs = db.prepare("SELECT * FROM recorrencias WHERE ativo = 1").all();
 
   const inserir = db.prepare(`
-    INSERT INTO movimentacoes (descricao, valor, tipo, categoria_id, data)
-    VALUES (?, ?, ?, ?, ?)
-  `);
+  INSERT INTO movimentacoes
+  (descricao, valor, tipo, origem, categoria_id, data)
+  VALUES (?, ?, ?, 'pix', ?, ?)
+`);
 
   let criadas = 0;
   for (const r of recorrs) {
@@ -244,19 +245,61 @@ function criarCompraCartao({ cartao_id, descricao, valor_total, parcelas, juros_
   return { ok: true, compraId };
 }
 
-function getFaturaCartao(cartao_id, mesYYYYMM) {
+function getFaturaCartao(cartao_id, mes){
+
   const itens = db.prepare(`
-    SELECT pc.*, cc.descricao, cc.categoria_id, c.nome AS categoria
+    SELECT
+      numero_parcela,
+      total_parcelas,
+      cc.descricao,
+      pc.valor,
+      cc.categoria_id,
+      pc.mes_ref,
+      pc.status
     FROM parcelas_cartao pc
     JOIN compras_cartao cc ON cc.id = pc.compra_id
-    LEFT JOIN categorias c ON c.id = cc.categoria_id
-    WHERE pc.cartao_id = ? AND pc.mes_ref = ? AND pc.status != 'cancelada'
-    ORDER BY pc.numero_parcela ASC
-  `).all(Number(cartao_id), mesYYYYMM);
+    WHERE pc.cartao_id = ?
+      AND pc.mes_ref = ?
+      AND pc.status != 'cancelada'
+    ORDER BY pc.numero_parcela
+  `).all(cartao_id, mes);
 
-  const total = itens.reduce((s, x) => s + Number(x.valor), 0);
-  return { cartao_id: Number(cartao_id), mes: mesYYYYMM, total, itens };
+  const total = itens.reduce((s,x)=> s + Number(x.valor),0);
+
+  return {
+    cartao_id,
+    mes,
+    total,
+    itens
+  };
 }
+
+function pagarFatura(cartao_id, mes){
+
+  const fatura = getFaturaCartao(cartao_id, mes);
+
+  if(!fatura.itens.length) return {ok:false};
+
+  db.prepare(`
+    INSERT INTO movimentacoes
+    (descricao, valor, tipo, origem, data)
+    VALUES (?, ?, 'saida', 'cartao_credito', date('now'))
+  `).run(
+    `Fatura cartão ${cartao_id} ${mes}`,
+    fatura.total
+  );
+
+  db.prepare(`
+    UPDATE parcelas_cartao
+    SET status='paga'
+    WHERE cartao_id = ?
+    AND substr(data,1,7) = ?
+  `).run(cartao_id, mes);
+
+  return {ok:true};
+
+}
+
 function getFaturasMes(mesYYYYMM) {
   return db.prepare(`
     SELECT
@@ -363,19 +406,29 @@ function editarMovimentacao(id, data) {
 function deletarMovimentacao(id){
   return db.prepare(`DELETE FROM movimentacoes WHERE id=?`).run(id);
 }
+
 function getRelatorioCategorias(mes) {
   return db.prepare(`
     SELECT
+      c.id,
       c.nome AS categoria,
-      COALESCE(SUM(CASE WHEN m.tipo='saida' THEN m.valor ELSE 0 END), 0) AS total_saidas,
-      COALESCE(SUM(CASE WHEN m.tipo='entrada' THEN m.valor ELSE 0 END), 0) AS total_entradas
+      COALESCE(SUM(
+        CASE WHEN m.tipo='saida' THEN m.valor ELSE 0 END
+      ), 0) AS total_saidas,
+      COALESCE(SUM(
+        CASE WHEN m.tipo='entrada' THEN m.valor ELSE 0 END
+      ), 0) AS total_entradas,
+      COALESCE(meta.valor_meta, 0) AS meta
     FROM categorias c
     LEFT JOIN movimentacoes m
       ON m.categoria_id = c.id
-     AND substr(m.data, 1, 7) = ?
+      AND substr(m.data, 1, 7) = ?
+    LEFT JOIN metas_categoria meta
+      ON meta.categoria_id = c.id
+      AND meta.mes = ?
     GROUP BY c.id
-    ORDER BY total_saidas DESC, total_entradas DESC
-  `).all(mes);
+    ORDER BY total_saidas DESC
+  `).all(mes, mes);
 }
 
 function getPrevisao(mesYYYYMM) {
@@ -451,7 +504,7 @@ function getMovimentacoes(mes) {
   `).all(mes);
 }
 
-function criarCompraCartao(payload) {
+function criarCompraCartao(payload){
 
   const {
     descricao,
@@ -467,8 +520,8 @@ function criarCompraCartao(payload) {
 
   const insert = db.prepare(`
     INSERT INTO parcelas_cartao
-    (descricao, valor, categoria_id, cartao_id, parcela_num, parcela_total, data)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    (descricao, valor, categoria_id, cartao_id, parcela_num, parcela_total, data, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'aberta')
   `);
 
   for (let p = 1; p <= N; p++) {
@@ -478,7 +531,7 @@ function criarCompraCartao(payload) {
     `).get(data, p - 1);
 
     insert.run(
-      `${descricao} (${p}/${N})`,
+      descricao,
       valorParcela,
       categoria_id,
       cartao_id,
@@ -489,7 +542,7 @@ function criarCompraCartao(payload) {
 
   }
 
-  return { ok: true };
+  return { ok:true };
 
 }
 
@@ -594,6 +647,102 @@ function getLimiteCartao(cartao_id){
   };
 }
 
+function getDashboard(mes){
+
+  const resumo = db.prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) as entradas,
+      COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) as saidas
+    FROM movimentacoes
+    WHERE substr(data,1,7)=?
+  `).get(mes);
+
+  const saldo = db.prepare(`
+    SELECT
+      COALESCE(SUM(
+        CASE
+          WHEN tipo='entrada' THEN valor
+          WHEN tipo='saida' THEN -valor
+        END
+      ),0) as saldo
+    FROM movimentacoes
+  `).get();
+
+  const fatura = db.prepare(`
+    SELECT COALESCE(SUM(valor),0) as total
+    FROM parcelas_cartao
+    WHERE mes_ref = ?
+  `).get(mes);
+
+  return {
+    saldo: saldo.saldo,
+    entradas: resumo.entradas,
+    saidas: resumo.saidas,
+    fatura: fatura.total
+  };
+
+}
+
+function setMetaCategoria(categoria_id, valor_meta, mes) {
+  return db.prepare(`
+    INSERT INTO metas_categoria (categoria_id, mes, valor_meta)
+    VALUES (?, ?, ?)
+    ON CONFLICT(categoria_id, mes)
+    DO UPDATE SET valor_meta = excluded.valor_meta
+  `).run(categoria_id, mes, valor_meta);
+}
+
+function getMetasComGasto(mes) {
+  return db.prepare(`
+    SELECT
+      c.nome as categoria,
+      m.valor_meta,
+      COALESCE(SUM(
+        CASE WHEN mov.tipo='saida' THEN mov.valor ELSE 0 END
+      ),0) as gasto_mes
+    FROM metas_categoria m
+    JOIN categorias c ON c.id = m.categoria_id
+    LEFT JOIN movimentacoes mov
+      ON mov.categoria_id = c.id
+     AND substr(mov.data,1,7)=?
+    GROUP BY c.id
+  `).all(mes);
+}
+
+function getControleCartao(cartao_id) {
+
+  const cartao = db.prepare(`
+    SELECT id, nome, limite
+    FROM cartoes
+    WHERE id = ?
+  `).get(cartao_id);
+
+  if (!cartao) return null;
+
+  const usado = db.prepare(`
+    SELECT COALESCE(SUM(valor), 0) as total
+    FROM movimentacoes
+    WHERE cartao_id = ?
+      AND origem = 'cartao_credito'
+      AND status = 'aberta'
+  `).get(cartao_id).total;
+
+  const disponivel = cartao.limite - usado;
+
+  const percentual = cartao.limite > 0
+    ? (usado / cartao.limite) * 100
+    : 0;
+
+  return {
+    nome: cartao.nome,
+    limite: cartao.limite,
+    usado,
+    disponivel,
+    percentual
+  };
+}
+
+
 module.exports = {
 
   getMovimentacoes,
@@ -628,5 +777,10 @@ module.exports = {
   deleteCompraCartao,
 
   getSaldoAtual,
-  getLimiteCartao
+  getLimiteCartao,
+  pagarFatura,
+  getDashboard,
+  setMetaCategoria,
+  getMetasComGasto,
+  getControleCartao
 };
