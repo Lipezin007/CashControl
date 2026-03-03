@@ -3,25 +3,29 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Controle Financeiro</title>
+<title>Cash Control</title>
+<link rel="icon" type="image/x-icon" href="/favicon.ico?v=20260303" />
 <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
 
 <div class="topbar">
-  <h1 class="titulo">Controle Financeiro</h1>
-
-  
-  <button id="btnPDF" class="btn-secundario">
-  📄 Gerar PDF do mês
-</button>
-
+  <header class="topo">
+  <div class="logo-container">
+    <img src="/logo.png" class="logo-img">
+    <span class="logo-text">Cash Control</span>
+  </div>
+</header>
+<button onclick="logout()">Sair</button>
   <div class="filtro-global">
     <label>Mês</label>
     <input type="month" id="filtroMes">
+    <button id="btnPDF" class="btn-secundario">
+  📄 Gerar PDF do mês
+</button>
   </div>
-
+  
 </div>
 
 <div class="dashboard">
@@ -279,6 +283,10 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="/favicon.ico">
+<link rel="apple-touch-icon" href="/favicon.ico">
+<meta name="theme-color" content="#0b1220">
 
 </body>
 </html>

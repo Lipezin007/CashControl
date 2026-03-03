@@ -37,6 +37,34 @@ const dataInput = document.querySelector("#data");
 const origemInput = document.querySelector("#origem");
 const areaCartao = document.querySelector("#areaCartao");
 
+const token = localStorage.getItem("token");
+
+if (!token) {
+  window.location.href = "/login.html";
+}
+
+async function api(url, options = {}) {
+
+  const headers = {
+    ...(options.headers || {}),
+    "Authorization": "Bearer " + token
+  };
+
+  const response = await fetch(url, {
+    ...options,
+    headers
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      logout();
+      return;
+    }
+  }
+
+  return response;
+}
+
 function ajustarTipoCartao() {
 
   if (!origemInput || !tipoInput) return;
@@ -54,8 +82,7 @@ async function carregarGraficoMensal() {
 
   const ano = new Date().getFullYear();
 
-  const dados = await fetch(`/api/mensal?ano=${ano}`)
-    .then(r => r.json());
+  const dados = await api(`/api/mensal?ano=${ano}`).then(r => r.json());
 
   const labels = dados.map(x => x.mes);
   const entradas = dados.map(x => Number(x.entradas || 0));
@@ -125,7 +152,7 @@ const cartaoSelect = document.querySelector("#cartaoSelect"); // o select que fi
 async function carregarCartoesNoForm() {
   if (!cartaoSelect) return;
 
-  const cartoes = await fetch("/api/cartoes").then(r => r.json());
+ const cartoes = await api("/api/cartoes").then(r => r.json());
 
   cartaoSelect.innerHTML =
     `<option value="">Selecione o cartão</option>` +
@@ -138,8 +165,7 @@ async function carregarDashboard(){
 
   const mes = filtroMes.value;
 
-  const d = await fetch(`/api/dashboard?mes=${mes}`)
-    .then(r=>r.json());
+  const d = await api(`/api/dashboard?mes=${mes}`).then(r=>r.json());
 
   dashboardDiv.innerHTML = `
     <p><b>Saldo atual:</b> ${money(d.saldo)}</p>
@@ -175,9 +201,7 @@ async function carregarRelatorioCategorias() {
   const mes = (filtroMes && filtroMes.value) ? filtroMes.value : null;
   if (!mes) { metasBody.innerHTML = ""; return; }
 
-  const dados = await fetch(
-    `/api/relatorio-categorias?mes=${encodeURIComponent(mes)}`
-  ).then(r => r.json());
+  const dados = await api(`/api/relatorio-categorias?mes=${encodeURIComponent(mes)}`).then(r => r.json());
 
   metasBody.innerHTML = dados.map(x => {
 
@@ -205,7 +229,7 @@ function money(v) {
 }
 
 async function carregarCategorias() {
-  const cats = await fetch("/api/categorias").then(r => r.json());
+  const cats = await api("/api/categorias").then(r => r.json());
 
   categoriaSelect.innerHTML = cats.map(c =>
     `<option value="${c.id}">${c.nome}</option>`
@@ -220,7 +244,7 @@ async function carregarTransacoes() {
   if (!filtroMes?.value) return;
 
   const url = `/api/movimentacoes?mes=${encodeURIComponent(filtroMes.value)}`;
-  const trans = await fetch(url).then(r => r.json());
+  const trans = await api(url).then(r => r.json());
 
   lista.innerHTML = trans.map(t => `
     <tr>
@@ -249,14 +273,14 @@ lista?.addEventListener("click", async (e) => {
 
   if (action === "del") {
     if (!confirm("Excluir essa transação?")) return;
-    await fetch(`/api/movimentacoes/${id}`, { method: "DELETE" });
+    await api(`/api/movimentacoes/${id}`, { method: "DELETE" });
     await refreshTudo();
     return;
   }
 
   if (action === "edit") {
     // pega a transação atual pra preencher o form
-    const trans = await fetch(`/api/movimentacoes?mes=${encodeURIComponent(filtroMes.value)}`).then(r=>r.json());
+    const trans = await api(`/api/movimentacoes?mes=${encodeURIComponent(filtroMes.value)}`).then(r=>r.json());
     const t = trans.find(x => x.id === id);
     if (!t) return;
 
@@ -298,14 +322,14 @@ const body = {
 
   if (id) {
     // EDITAR
-    await fetch(`/api/movimentacoes/${id}`, {
+    await api(`/api/movimentacoes/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
   } else {
     // CRIAR
-    await fetch("/api/movimentacoes", {
+    await api("/api/movimentacoes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
@@ -354,13 +378,13 @@ const resumoRec = document.querySelector("#resumoRec");
 if (rMes) rMes.value = mesAtualYYYYMM();
 
 async function carregarCategoriasRec() {
-  const cats = await fetch("/api/categorias").then(r => r.json());
+  const cats = await api("/api/categorias").then(r => r.json());
   rCat.innerHTML = cats.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
 }
 
 async function carregarResumoRecorrencias() {
   if (!resumoRec) return;
-  const r = await fetch("/api/recorrencias/resumo").then(x => x.json());
+  const r = await api("/api/recorrencias/resumo").then(x => x.json());
   resumoRec.innerHTML = `
     <b>Só recorrências ativas:</b>
     Entradas ${money(r.entradas)} | Saídas ${money(r.saidas)} | Saldo ${money(r.saldo)}
@@ -368,7 +392,7 @@ async function carregarResumoRecorrencias() {
 }
 
 async function carregarRecorrencias() {
-  const recs = await fetch("/api/recorrencias").then(r => r.json());
+  const recs = await api("/api/recorrencias").then(r => r.json());
   listaRec.innerHTML = recs.map(r => `
     <tr>
       <td>${r.dia_mes}</td>
@@ -402,13 +426,13 @@ formRec?.addEventListener("submit", async (e) => {
   const id = rId.value ? Number(rId.value) : null;
 
   if (id) {
-    await fetch(`/api/recorrencias/${id}`, {
+    await api(`/api/recorrencias/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
   } else {
-    await fetch("/api/recorrencias", {
+    await api("/api/recorrencias", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
@@ -430,13 +454,13 @@ listaRec?.addEventListener("click", async (e) => {
 
   if (action === "del") {
     if (!confirm("Excluir essa recorrência?")) return;
-    await fetch(`/api/recorrencias/${id}`, { method: "DELETE" });
+    await api(`/api/recorrencias/${id}`, { method: "DELETE" });
     await carregarRecorrencias();
     return;
   }
 
   if (action === "edit") {
-    const recs = await fetch("/api/recorrencias").then(r => r.json());
+    const recs = await api("/api/recorrencias").then(r => r.json());
     const r = recs.find(x => x.id === id);
     if (!r) return;
 
@@ -454,8 +478,9 @@ listaRec?.addEventListener("click", async (e) => {
 
 btnGerar?.addEventListener("click", async () => {
   const mes = rMes.value.trim(); // YYYY-MM
-  const resp = await fetch(`/api/recorrencias/gerar?mes=${encodeURIComponent(mes)}`, { method: "POST" })
-    .then(r => r.json());
+  const resp = await api(`/api/recorrencias/gerar?mes=${encodeURIComponent(mes)}`, {
+    method: "POST"
+  }).then(r => r.json());
 
   alert(`Criadas: ${resp.criadas}`);
   await refreshTudo();
@@ -475,7 +500,7 @@ async function carregarResumo() {
 
   const mes = filtroMes.value;
 
-  const r = await fetch(`/api/resumo?mes=${mes}`);
+  const r = await api(`/api/resumo?mes=${mes}`);
   const dados = await r.json();
 
   if (!resumoDiv) return;
@@ -495,8 +520,7 @@ async function carregarGraficoCategorias() {
   const mes = (filtroMes && filtroMes.value) ? filtroMes.value : null;
   if (!mes) return;
 
-  const dados = await fetch(`/api/relatorio-categorias?mes=${encodeURIComponent(mes)}`)
-    .then(r => r.json());
+  const dados = await api(`/api/relatorio-categorias?mes=${encodeURIComponent(mes)}`).then(r => r.json());
 
   const labels = dados.map(x => x.categoria);
   const saidas = dados.map(x => Number(x.total_saidas || 0));
@@ -529,7 +553,7 @@ const previsaoDiv = document.querySelector("#previsao");
 async function carregarPrevisao() {
   if (!previsaoDiv || !filtroMes?.value) return;
 
-  const p = await fetch(`/api/previsao?mes=${encodeURIComponent(filtroMes.value)}`).then(r => r.json());
+  const p = await api(`/api/previsao?mes=${encodeURIComponent(filtroMes.value)}`).then(r => r.json());
 
   previsaoDiv.innerHTML = `
     <b>Saldo atual:</b> ${money(p.saldo_atual)}<br/>
@@ -548,9 +572,7 @@ async function carregarFatura() {
 
   if (!cartaoId || !mes) return;
 
-  const resp = await fetch(
-    `/api/cartoes/${cartaoId}/fatura?mes=${encodeURIComponent(mes)}`
-  );
+  const resp = await api(`/api/cartoes/${cartaoId}/fatura?mes=${encodeURIComponent(mes)}`);
 
   if (!resp.ok) {
     console.error("Erro ao buscar fatura");
@@ -577,7 +599,7 @@ btnFat?.addEventListener("click", carregarFatura);
 
 async function carregarMetas(){
   const mes = filtroMes.value;
-  const dados = await fetch(`/api/metas?mes=${mes}`).then(r=>r.json());
+  const dados = await api(`/api/metas?mes=${mes}`).then(r=>r.json());
 
   metasBody.innerHTML = dados.map(m => {
 
@@ -599,7 +621,7 @@ async function carregarMetas(){
 }
 
 async function carregarCategoriasMeta() {
-  const cats = await fetch("/api/categorias").then(r => r.json());
+  const cats = await api("/api/categorias").then(r => r.json());
 
   metaCategoria.innerHTML =
     `<option value="">Selecione</option>` +
@@ -608,7 +630,7 @@ async function carregarCategoriasMeta() {
 
 btnMeta?.addEventListener("click", async () => {
 
-  await fetch("/api/metas", {
+  await api("/api/metas", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -629,9 +651,7 @@ async function carregarControleCartao() {
   const cartaoId = fatCartao.value;
   if (!cartaoId) return;
 
-  const dados = await fetch(
-    `/api/cartoes/${cartaoId}/controle`
-  ).then(r => r.json());
+  const dados = await api(`/api/cartoes/${cartaoId}/controle`).then(r => r.json());
 
   if (!dados) return;
 
@@ -701,7 +721,7 @@ if (fatMes) fatMes.value = mesAtualYYYYMM();
 if (ccData) ccData.valueAsDate = new Date();
 
 async function carregarCartoes() {
-  const cartoes = await fetch("/api/cartoes").then(r => r.json());
+  const cartoes = await api("/api/cartoes").then(r => r.json());
   const opts = cartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
   if (ccCartao) ccCartao.innerHTML = opts;
   if (fatCartao) fatCartao.innerHTML = opts;
@@ -714,13 +734,13 @@ function setMesAtualFatura(){
 }
 
 async function carregarCategoriasCartao() {
-  const cats = await fetch("/api/categorias").then(r => r.json());
+  const cats = await api("/api/categorias").then(r => r.json());
   if (ccCat) ccCat.innerHTML = cats.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
 }
 
 formCartao?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  await fetch("/api/cartoes", {
+  await api("/api/cartoes", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -737,7 +757,7 @@ formCartao?.addEventListener("submit", async (e) => {
 
 formCompra?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  await fetch("/api/cartoes/compra", {
+  await api("/api/cartoes/compra", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -758,7 +778,7 @@ formCompra?.addEventListener("submit", async (e) => {
 btnFat?.addEventListener("click", async () => {
   const cartaoId = Number(fatCartao.value);
   const mes = fatMes.value;
-  const f = await fetch(`/api/cartoes/${cartaoId}/fatura?mes=${encodeURIComponent(mes)}`).then(r => r.json());
+  const f = await api(`/api/cartoes/${cartaoId}/fatura?mes=${encodeURIComponent(mes)}`).then(r => r.json());
 
   fatTotal.innerHTML = `<b>Total da fatura:</b> ${money(f.total)} (mostre como negativo no app)`;
 
@@ -850,5 +870,10 @@ btnPDF?.addEventListener("click", () => {
     return;
   }
 
-  window.open(`/api/relatorio-pdf?mes=${mes}`, "_blank");
+  window.open(`/api/relatorio-pdf?mes=${mes}&token=${token}`, "_blank");
 });
+
+function logout() {
+  localStorage.removeItem("token");
+  window.location.href = "/login.html";
+}

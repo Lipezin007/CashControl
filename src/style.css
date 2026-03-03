@@ -7,6 +7,10 @@
 }
 
 body {
+  font-family: 'Inter', sans-serif;
+}
+
+body {
   margin: 0;
   font-family: "Inter", "Segoe UI", sans-serif;
   background: radial-gradient(circle at top left, #0f1b2e, #060c18 60%);
@@ -392,4 +396,129 @@ label {
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   margin-bottom: 15px;
+}
+
+.topo {
+  width: 100%;
+  padding: 20px 40px;
+  background: #0b1220;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.logo-img {
+  width: 55px;
+  height: 55px;
+}
+
+.logo-text {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: #ffffff;
+}
+
+.login-body {
+  background: #0f172a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.login-box {
+  background: #111827;
+  padding: 40px;
+  border-radius: 20px;
+  width: 350px;
+  text-align: center;
+  box-shadow: 0 0 40px rgba(0,229,255,0.15);
+}
+
+.login-logo {
+  width: 70px;
+  margin-bottom: 20px;
+}
+
+.login-box input {
+  width: 100%;
+  margin-bottom: 15px;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  background: #1f2937;
+  color: white;
+}
+
+.login-box button {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg,#00e5ff,#8b5cf6);
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+.login-body {
+  background: #0f172a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.auth-box {
+  background: #111827;
+  padding: 40px;
+  border-radius: 20px;
+  width: 360px;
+  text-align: center;
+  box-shadow: 0 0 40px rgba(0,229,255,0.15);
+}
+
+.login-logo {
+  width: 70px;
+  margin-bottom: 15px;
+}
+
+.auth-box input {
+  width: 100%;
+  margin-bottom: 15px;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  background: #1f2937;
+  color: white;
+}
+
+.auth-box button {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg,#00e5ff,#8b5cf6);
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.switch-text {
+  margin-top: 15px;
+  font-size: 13px;
+  color: #aaa;
+}
+
+.switch-text span {
+  color: #00e5ff;
+  cursor: pointer;
+  font-weight: 600;
 }

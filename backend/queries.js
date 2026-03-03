@@ -782,5 +782,9 @@ module.exports = {
   getDashboard,
   setMetaCategoria,
   getMetasComGasto,
-  getControleCartao
+  getControleCartao,
+  setRecorrenciaAtiva,
+  inserirMovimentacao,
+  updateMovimentacao,
+
 };
