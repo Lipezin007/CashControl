@@ -15,6 +15,16 @@ const categoriaSelect = document.querySelector("#categoria");
 const filtroMes = document.querySelector("#filtroMes");
 
 const chartMensalCanvas = document.querySelector("#chartMensal");
+const idInput = document.querySelector("#id");
+const descricaoInput = document.querySelector("#descricao");
+const valorInput = document.querySelector("#valor");
+const tipoInput = document.querySelector("#tipo");
+const origemInput = document.querySelector("#origem");
+const dataInput = document.querySelector("#data");
+
+const cartaoSelect = document.querySelector("#cartaoSelect");
+const parcelasInput = document.querySelector("#parcelasInput");
+const jurosInput = document.querySelector("#jurosInput");
 let chartMensal = null;
 
 function mesAtualYYYYMM() {
@@ -28,13 +38,6 @@ if (filtroMes && !filtroMes.value) {
   filtroMes.value = mesAtualYYYYMM();
 }
 
-const idInput = document.querySelector("#id");
-const descricaoInput = document.querySelector("#descricao");
-const valorInput = document.querySelector("#valor");
-const tipoInput = document.querySelector("#tipo");
-const dataInput = document.querySelector("#data");
-
-const origemInput = document.querySelector("#origem");
 const areaCartao = document.querySelector("#areaCartao");
 
 const token = localStorage.getItem("token");
@@ -55,12 +58,11 @@ async function api(url, options = {}) {
     headers
   });
 
-  if (!response.ok) {
-    if (response.status === 401) {
-      logout();
-      return;
-    }
-  }
+ if (!response.ok) {
+  const text = await response.text();
+  console.error("Erro API:", text);
+  throw new Error(text);
+}
 
   return response;
 }
@@ -146,8 +148,6 @@ toggleCartaoUI();
 if (dataInput) {
   dataInput.valueAsDate = new Date();
 }
-
-const cartaoSelect = document.querySelector("#cartaoSelect"); // o select que fica na Nova transação
 
 async function carregarCartoesNoForm() {
   if (!cartaoSelect) return;
@@ -300,10 +300,15 @@ lista?.addEventListener("click", async (e) => {
 
 form?.addEventListener("submit", async (e) => {
   e.preventDefault();
+
+  console.log("SUBMIT DISPAROU");
 const cartaoSelect = document.querySelector("#cartaoSelect");
 const parcelasInput = document.querySelector("#parcelasInput");
 const jurosInput = document.querySelector("#jurosInput");
-  const isCartao = origemInput.value === "cartao_credito";
+const isCartao = origemInput.value === "cartao_credito";
+
+console.log("origem:", origemInput.value);
+console.log("isCartao:", isCartao);
 
 const body = {
   descricao: descricaoInput.value,
@@ -321,20 +326,44 @@ const body = {
   const id = idInput.value ? Number(idInput.value) : null;
 
   if (id) {
-    // EDITAR
-    await api(`/api/movimentacoes/${id}`, {
-      method: "PUT",
+
+  await api(`/api/movimentacoes/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+} else {
+
+  if (origemInput.value === "cartao_credito") {
+
+    const compraCartao = {
+      descricao: descricaoInput.value,
+      valor_total: Number(valorInput.value),
+      categoria_id: Number(categoriaSelect.value),
+      cartao_id: Number(cartaoSelect.value),
+      parcelas: Number(parcelasInput.value || 1),
+      juros_mensal: Number(jurosInput.value || 0),
+      data_compra: dataInput.value
+};
+
+    await api("/api/cartoes/compra", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify(compraCartao)
     });
+
   } else {
-    // CRIAR
+
     await api("/api/movimentacoes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
+
   }
+
+}
 
   // limpa form e recarrega
   form.reset();
@@ -594,6 +623,9 @@ async function carregarFatura() {
       <td>${i.status}</td>
     </tr>
   `).join("");
+
+  await carregarPrevisaoCartao(cartaoId);
+  
 }
 btnFat?.addEventListener("click", carregarFatura);
 
@@ -780,18 +812,23 @@ btnFat?.addEventListener("click", async () => {
   const mes = fatMes.value;
   const f = await api(`/api/cartoes/${cartaoId}/fatura?mes=${encodeURIComponent(mes)}`).then(r => r.json());
 
-  fatTotal.innerHTML = `<b>Total da fatura:</b> ${money(f.total)} (mostre como negativo no app)`;
+  fatTotal.innerHTML = `<b>Total da fatura:</b> ${money(f.total)}`;
 
   fatItens.innerHTML = f.itens.map(x => `
-    <tr>
-      <td>${x.numero_parcela}/${x.total_parcelas}</td>
-      <td>${x.descricao}</td>
-      <td>${x.categoria ?? "-"}</td>
-      <td>${x.mes_ref}</td>
-      <td>${money(x.valor)}</td>
-      <td>${x.status}</td>
-    </tr>
-  `).join("");
+  <tr>
+    <td>${x.numero_parcela}/${x.total_parcelas}</td>
+    <td>${x.descricao}</td>
+    <td>${x.categoria ?? "-"}</td>
+    <td>${x.mes_ref}</td>
+    <td>${money(x.valor)}</td>
+    <td>${x.status}</td>
+    <td>
+      <button class="btnParcelas" data-compra="${x.compra_id}">
+        Ver parcelas
+      </button>
+    </td>
+  </tr>
+`).join("");
 });
 
 document?.addEventListener("DOMContentLoaded", () => {
@@ -872,6 +909,127 @@ btnPDF?.addEventListener("click", () => {
 
   window.open(`/api/relatorio-pdf?mes=${mes}&token=${token}`, "_blank");
 });
+
+const btnPagarFatura = document.querySelector("#btnPagarFatura");
+
+btnPagarFatura?.addEventListener("click", async () => {
+
+  const cartaoId = fatCartao.value;
+  const mes = fatMes.value;
+
+  if(!confirm("Confirmar pagamento da fatura?")) return;
+
+  await api(`/api/cartoes/${cartaoId}/pagar`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mes })
+  });
+
+  alert("Fatura paga!");
+
+  await refreshTudo();
+});
+
+
+
+const modalParcelas = document.querySelector("#modalParcelas");
+const parcelasBody = document.querySelector("#parcelasBody");
+const fecharParcelas = document.querySelector("#fecharParcelas");
+const timeline = document.querySelector("#parcelasTimeline");
+
+document.addEventListener("click", async (e) => {
+
+  const btn = e.target.closest("[data-compra]");
+  if(!btn) return;
+
+  const compraId = btn.dataset.compra;
+
+  const parcelas = await api(`/api/cartoes/compra/${compraId}/parcelas`)
+    .then(r => r.json());
+
+  parcelasBody.innerHTML = parcelas.map(p => `
+    <tr>
+      <td>${p.numero_parcela}/${p.total_parcelas}</td>
+      <td>${p.mes_ref}</td>
+      <td>${money(p.valor)}</td>
+      <td>${p.status}</td>
+    </tr>
+  `).join("");
+
+  modalParcelas.style.display = "flex";
+});
+
+fecharParcelas.addEventListener("click", () => {
+  modalParcelas.style.display = "none";
+});
+
+window.addEventListener("click", (e) => {
+  if(e.target === modalParcelas){
+    modalParcelas.style.display = "none";
+  }
+});
+
+document.addEventListener("click", async (e) => {
+
+  const btn = e.target.closest("[data-compra]");
+  if(!btn) return;
+
+  const compraId = btn.dataset.compra;
+
+  const parcelas = await api(`/api/cartoes/compra/${compraId}/parcelas`)
+    .then(r => r.json());
+
+  timeline.innerHTML = parcelas.map(p => {
+
+    const statusIcon =
+      p.status === "paga" ? "✔" :
+      p.status === "aberta" ? "⏳" :
+      "•";
+
+    return `
+      <div class="timeline-item">
+        <div class="timeline-status">${statusIcon}</div>
+
+        <div class="timeline-info">
+          ${p.numero_parcela}/${p.total_parcelas} - ${p.mes_ref}
+        </div>
+
+        <div class="timeline-valor">
+          ${money(p.valor)}
+        </div>
+      </div>
+    `;
+
+  }).join("");
+
+  modalParcelas.style.display = "flex";
+});
+
+fecharParcelas.addEventListener("click", () => {
+  modalParcelas.style.display = "none";
+});
+
+window.addEventListener("click", (e) => {
+  if(e.target === modalParcelas){
+    modalParcelas.style.display = "none";
+  }
+});
+
+async function carregarPrevisaoCartao(cartaoId){
+
+  const prev = await api(`/api/cartoes/${cartaoId}/previsao`)
+    .then(r => r.json());
+
+  const div = document.querySelector("#previsaoCartao");
+
+  div.innerHTML = prev.map(p => `
+    <div class="prev-item">
+      <span>${p.mes_ref}</span>
+      <strong>${money(p.total)}</strong>
+    </div>
+  `).join("");
+
+}
 
 function logout() {
   localStorage.removeItem("token");

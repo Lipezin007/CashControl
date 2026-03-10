@@ -1,4 +1,9 @@
-const db = require("./db");
+const Database = require("better-sqlite3");
+const path = require("path");
+
+const dbPath = path.join(__dirname, "..", "database", "database.db");
+
+const db = new Database(dbPath);
 
 console.log("Inicializando banco de dados...");
 
@@ -13,7 +18,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
 
 CREATE TABLE IF NOT EXISTS categorias (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  nome TEXT
+  nome TEXT,
+  usuario_id INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS movimentacoes (
@@ -21,13 +27,13 @@ CREATE TABLE IF NOT EXISTS movimentacoes (
   descricao TEXT,
   valor REAL,
   tipo TEXT,
-  origem TEXT,
   data TEXT,
   categoria_id INTEGER,
   usuario_id INTEGER,
+  cartao_id INTEGER,
   parcela_num INTEGER,
   parcela_total INTEGER,
-  cartao_id INTEGER
+  origem TEXT
 );
 
 CREATE TABLE IF NOT EXISTS cartoes (
@@ -40,17 +46,25 @@ CREATE TABLE IF NOT EXISTS cartoes (
   ativo INTEGER DEFAULT 1
 );
 
-CREATE TABLE IF NOT EXISTS parcelas_cartao (
+CREATE TABLE IF NOT EXISTS compras_cartao (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   cartao_id INTEGER,
   descricao TEXT,
-  valor REAL,
-  numero_parcela INTEGER,
-  total_parcelas INTEGER,
-  mes_ref TEXT,
+  valor_total REAL,
+  parcelas INTEGER,
+  juros_mensal REAL,
+  data_compra TEXT,
   categoria_id INTEGER,
+  usuario_id INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS metas_categoria (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   usuario_id INTEGER,
-  status TEXT DEFAULT 'pendente'
+  categoria_id INTEGER,
+  mes TEXT,
+  valor_meta REAL,
+  UNIQUE(usuario_id, categoria_id, mes)
 );
 
 CREATE TABLE IF NOT EXISTS recorrencias (
@@ -60,18 +74,45 @@ CREATE TABLE IF NOT EXISTS recorrencias (
   tipo TEXT,
   categoria_id INTEGER,
   dia_mes INTEGER,
-  usuario_id INTEGER,
-  ativo INTEGER DEFAULT 1
-);
-
-CREATE TABLE IF NOT EXISTS metas_categoria (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  usuario_id INTEGER,
-  categoria_id INTEGER,
-  valor_meta REAL,
-  mes TEXT
+  ativo INTEGER DEFAULT 1,
+  usuario_id INTEGER
 );
 
 `);
 
-console.log("Banco inicializado!");
+/* -------------------------
+   CATEGORIAS PADRÃO
+--------------------------*/
+
+const qtd = db.prepare(`
+  SELECT COUNT(*) as total FROM categorias
+`).get().total;
+
+if (qtd === 0) {
+
+  const categorias = [
+    "Alimentação",
+    "Transporte",
+    "Moradia",
+    "Lazer",
+    "Saúde",
+    "Educação",
+    "Salário",
+    "Investimentos",
+    "Outros"
+  ];
+
+  const insert = db.prepare(`
+    INSERT INTO categorias (nome) VALUES (?)
+  `);
+
+  for (const c of categorias) {
+    insert.run(c);
+  }
+
+  console.log("Categorias padrão criadas!");
+}
+
+console.log("Banco criado com sucesso.");
+
+db.close();

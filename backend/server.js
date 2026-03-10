@@ -90,25 +90,34 @@ app.post("/api/login", async (req, res) => {
   const token = jwt.sign(
     { id: user.id, email: user.email },
     SECRET,
-    { expiresIn: "1d" }
+    { expiresIn: "7d" }
   );
 
   res.json({ token });
 });
 
 function auth(req, res, next) {
+
+  let token;
+
   const header = req.headers.authorization;
 
-  if (!header) return res.sendStatus(401);
+  if (header) {
+    token = header.split(" ")[1];
+  } else if (req.query.token) {
+    token = req.query.token;
+  }
 
-  const token = header.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ erro: "Token não enviado" });
+  }
 
   try {
     const decoded = jwt.verify(token, SECRET);
     req.user = decoded;
     next();
   } catch {
-    res.sendStatus(403);
+    res.status(403).json({ erro: "Token inválido" });
   }
 }
 
@@ -120,15 +129,43 @@ app.use(express.static(path.join(__dirname, "..", "src")));
 // Rotas protegidas por autenticação
 
 app.get("/api/movimentacoes", auth, (req, res) => {
-  const userId = req.user.id;
+
   const mes = req.query.mes;
-  if (!mes || !/^\d{4}-\d{2}$/.test(mes)) return res.status(400).json({ ok:false, erro:"mes inválido" });
-  const dados = db.prepare(`
-    SELECT * FROM movimentacoes
-    WHERE usuario_id = ?
-    AND substr(data,1,7) = ?
-  `).all(userId, mes);
-  res.json(dados);
+
+  const mov = db.prepare(`
+    SELECT
+      id,
+      data,
+      descricao,
+      valor,
+      tipo,
+      categoria_id,
+      NULL as parcela_num,
+      NULL as parcela_total
+    FROM movimentacoes
+    WHERE strftime('%Y-%m', data) = ?
+  `).all(mes);
+
+  const cartao = db.prepare(`
+    SELECT
+      pc.id,
+      pc.mes_ref || '-01' as data,
+      cc.descricao,
+      pc.valor,
+      'saida' as tipo,
+      cc.categoria_id,
+      pc.numero_parcela as parcela_num,
+      pc.total_parcelas as parcela_total
+    FROM parcelas_cartao pc
+    JOIN compras_cartao cc ON cc.id = pc.compra_id
+    WHERE pc.mes_ref = ?
+    AND pc.status = 'aberta'
+  `).all(mes);
+
+  const resultado = [...mov, ...cartao].sort((a,b)=>b.data.localeCompare(a.data));
+
+  res.json(resultado);
+
 });
 
 
@@ -204,7 +241,15 @@ app.post("/api/cartoes", auth, (req, res) => {
 });
 
 app.post("/api/cartoes/compra", auth, (req, res) => {
-  res.json(queries.criarCompraCartao(req.body));
+
+  console.log("ROTA CARTAO CHAMADA");
+  console.log(req.body);
+
+  const r = queries.criarCompraCartao(req.body);
+
+  console.log("RESULTADO:", r);
+
+  res.json(r);
 });
 
 app.get("/api/cartoes/:id/fatura", auth, (req, res) => {
@@ -306,7 +351,7 @@ app.get("/api/dashboard", auth, (req,res)=>{
 
 app.post("/api/metas", auth, (req,res)=>{
   const {categoria_id, valor_meta, mes} = req.body;
-  res.json(queries.setMetaCategoria(categoria_id, valor_meta, mes));
+  res.json(queries.setMetaCategoria(req.user.id, categoria_id, valor_meta, mes));
 });
 
 
@@ -327,13 +372,29 @@ app.get("/api/mensal", auth, (req, res) => {
   const ano = req.query.ano;
 
   const dados = db.prepare(`
-    SELECT 
-      strftime('%m', data) as mes_num,
-      SUM(CASE WHEN tipo = 'entrada' THEN valor ELSE 0 END) as entradas,
-      SUM(CASE WHEN tipo = 'saida' THEN valor ELSE 0 END) as saidas
-    FROM movimentacoes
-    WHERE strftime('%Y', data) = ?
-    GROUP BY mes_num
+    SELECT
+  mes_num,
+  SUM(entradas) as entradas,
+  SUM(saidas) as saidas
+FROM (
+
+  SELECT
+    strftime('%m', data) as mes_num,
+    CASE WHEN tipo='entrada' THEN valor ELSE 0 END as entradas,
+    CASE WHEN tipo='saida' THEN valor ELSE 0 END as saidas
+  FROM movimentacoes
+  WHERE strftime('%Y', data)=?
+
+  UNION ALL
+
+  SELECT
+    strftime('%m', mes_ref || '-01') as mes_num,
+    0 as entradas,
+    valor as saidas
+  FROM parcelas_cartao
+
+) 
+GROUP BY mes_num
   `).all(ano);
 
   const mapa = {};
@@ -510,6 +571,34 @@ app.get("/api/relatorio-pdf", auth, (req, res) => {
     );
 
   doc.end();
+});
+
+app.get("/api/cartoes/compra/:id/parcelas", auth, (req,res)=>{
+  const compraId = Number(req.params.id);
+
+  const parcelas = db.prepare(`
+    SELECT
+      numero_parcela,
+      total_parcelas,
+      mes_ref,
+      valor,
+      status
+    FROM parcelas_cartao
+    WHERE compra_id = ?
+    ORDER BY numero_parcela
+  `).all(compraId);
+
+  res.json(parcelas);
+});
+
+app.get("/api/cartoes/:id/previsao", auth, (req,res)=>{
+
+  const cartaoId = Number(req.params.id);
+
+  const dados = queries.getPrevisaoCartao(cartaoId);
+
+  res.json(dados);
+
 });
 
 //temporarios

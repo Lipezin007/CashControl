@@ -162,6 +162,8 @@
     <select id="fat_cartao"></select>
     <input type="month" id="fat_mes">
     <button id="btnFat">Ver fatura</button>
+    <button id="btnPagarFatura">Pagar Fatura</button>
+   
   </div>
 
   <div id="controleCartao"></div>
@@ -180,6 +182,8 @@
     </thead>
     <tbody id="fat_itens"></tbody>
   </table>
+    <h4>Previsão de parcelas</h4>
+    <div id="previsaoCartao"></div>
 </section>
 
 
@@ -202,6 +206,19 @@
   </section>
 
 <!-- MODAL'S -->
+
+<!-- MODAL PARCELAS -->
+<div id="modalParcelas" class="modal">
+  <div class="modal-content">
+
+    <span id="fecharParcelas" class="fechar">&times;</span>
+
+    <h3>Parcelas da compra</h3>
+
+    <div id="parcelasTimeline"></div>
+
+  </div>
+</div>
 
 <!-- MODAL CRIAR CARTÃO -->
 <div id="modalCartao" class="modal">
