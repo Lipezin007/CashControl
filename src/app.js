@@ -933,7 +933,7 @@ btnPagarFatura?.addEventListener("click", async () => {
 
 
 const modalParcelas = document.querySelector("#modalParcelas");
-const parcelasBody = document.querySelector("#parcelasBody");
+const parcelasTimeline = document.querySelector("#parcelasTimeline");
 const fecharParcelas = document.querySelector("#fecharParcelas");
 const timeline = document.querySelector("#parcelasTimeline");
 
@@ -947,7 +947,7 @@ document.addEventListener("click", async (e) => {
   const parcelas = await api(`/api/cartoes/compra/${compraId}/parcelas`)
     .then(r => r.json());
 
-  parcelasBody.innerHTML = parcelas.map(p => `
+  parcelasTimeline.innerHTML = parcelas.map(p => `
     <tr>
       <td>${p.numero_parcela}/${p.total_parcelas}</td>
       <td>${p.mes_ref}</td>
