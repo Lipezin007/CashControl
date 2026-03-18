@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cash Control - Redefinir Senha</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="login-body">
+  <div class="auth-box">
+    <img src="/logo.png" class="login-logo">
+    <h2>Redefinir Senha</h2>
+
+    <div id="resetForm">
+      <input id="token" placeholder="Codigo" required>
+      <p id="resetAviso" class="reset-aviso" style="display:none;"></p>
+
+      <div id="areaSenha" style="display:none;">
+        <div class="input-senha">
+          <input type="password" id="novaSenha" placeholder="Nova senha">
+          <span class="toggleSenha">Mostrar</span>
+        </div>
+
+        <div class="input-senha">
+          <input type="password" id="confirmarSenha" placeholder="Confirmar senha">
+          <span class="toggleSenha">Mostrar</span>
+        </div>
+      </div>
+
+      <button id="btnConfirmar" type="button">Confirmar codigo</button>
+      <button id="btnReset" type="button" style="display:none;">Salvar nova senha</button>
+    </div>
+
+    <p class="switch-text">
+      <span id="voltarLogin">Voltar para login</span>
+    </p>
+  </div>
+
+  <div id="modalPadrao" class="modal">
+    <div class="modal-box">
+      <h3 id="modalTitulo"></h3>
+      <p id="modalTexto"></p>
+      <input id="modalInput" style="display:none;" />
+      <div class="modal-botoes">
+        <button id="modalCancelar">Cancelar</button>
+        <button id="modalOk">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="reset.js"></script>
+</body>
+</html>

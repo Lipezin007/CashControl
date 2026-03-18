@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="style.css">
 </head>
 
-<body class="login-body">
+<body class="login login-body">
 
 <div class="auth-box">
 
@@ -18,8 +18,20 @@
     <input type="text" id="nome" placeholder="Nome" style="display:none;">
 
     <input type="email" id="email" placeholder="Email" required>
-    <input type="password" id="senha" placeholder="Senha" required>
 
+    <div class="input-senha">
+      <input type="password" id="senha" placeholder="Senha" required>
+      <span class="toggleSenha">Mostrar</span>
+    </div>
+
+    <div class="input-senha" id="confirmarSenhaBox" style="display:none;">
+      <input type="password" id="confirmarSenha" placeholder="Confirmar senha">
+      <span class="toggleSenha">Mostrar</span>
+    </div>
+<div class="remember">
+  <input type="checkbox" id="lembrar">
+  <label for="lembrar">Lembrar de mim</label>
+</div>
     <button type="submit" id="submitBtn">Entrar</button>
   </form>
 
@@ -27,6 +39,22 @@
     <span id="toggleMode">Criar conta</span>
   </p>
 
+  <p class="switch-text">
+    <span id="forgotPassword">Esqueci minha senha</span>
+  </p>
+
+</div>
+
+<div id="modalPadrao" class="modal">
+  <div class="modal-box">
+    <h3 id="modalTitulo"></h3>
+    <p id="modalTexto"></p>
+    <input id="modalInput" style="display:none;" />
+    <div class="modal-botoes">
+      <button id="modalCancelar">Cancelar</button>
+      <button id="modalOk">OK</button>
+    </div>
+  </div>
 </div>
 
 <script src="auth.js"></script>

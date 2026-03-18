@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const db = require("./db");
 require("./initDB");
@@ -11,10 +13,72 @@ const app = express();
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const nodemailer = require("nodemailer");
 
 const SECRET = "cashcontrol_super_secret";
+const RESET_TOKEN_TTL_MS = 1000 * 60 * 15;
+
+const transporter = nodemailer.createTransport({
+  service: process.env.SMTP_SERVICE || "gmail",
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
 
 app.use(express.json());
+
+const userColumns = db.prepare("PRAGMA table_info(usuarios)").all();
+const hasResetTokenHashCol = userColumns.some((c) => c.name === "reset_token_hash");
+const hasResetExpiresAtCol = userColumns.some((c) => c.name === "reset_expires_at");
+const hasResetTokenPlainCol = userColumns.some((c) => c.name === "reset_token");
+const hasResetExpiraCol = userColumns.some((c) => c.name === "reset_expira");
+
+function getResetUserByToken(token) {
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+  if (hasResetTokenHashCol && hasResetExpiresAtCol) {
+    return db.prepare(`
+      SELECT id, reset_expires_at
+      FROM usuarios
+      WHERE reset_token_hash = ?
+    `).get(tokenHash);
+  }
+
+  // Legacy fallback (bases antigas que ainda usam reset_token/reset_expira)
+  if (hasResetTokenPlainCol && hasResetExpiraCol) {
+    return db.prepare(`
+      SELECT id, reset_expira
+      FROM usuarios
+      WHERE reset_token = ?
+    `).get(token);
+  }
+
+  return null;
+}
+
+function clearResetTokenByUserId(userId) {
+  if (hasResetTokenHashCol && hasResetExpiresAtCol) {
+    return db.prepare(`
+      UPDATE usuarios
+      SET reset_token_hash = NULL,
+          reset_expires_at = NULL
+      WHERE id = ?
+    `).run(userId);
+  }
+
+  if (hasResetTokenPlainCol && hasResetExpiraCol) {
+    return db.prepare(`
+      UPDATE usuarios
+      SET reset_token = NULL,
+          reset_expira = NULL
+      WHERE id = ?
+    `).run(userId);
+  }
+
+  return { changes: 0 };
+}
 
 function garantirCategoriasPadrao(){
 
@@ -58,10 +122,36 @@ app.post("/api/register", async (req, res) => {
   const hash = await bcrypt.hash(senha, 10);
 
   try {
-    db.prepare(`
+    const result = db.prepare(`
       INSERT INTO usuarios (nome, email, senha)
       VALUES (?, ?, ?)
     `).run(nome, email, hash);
+
+    const userId = result.lastInsertRowid;
+    const categorias = [
+      "Alimentação",
+      "Transporte",
+      "Moradia",
+      "Lazer",
+      "Saúde",
+      "Educação",
+      "Salário",
+      "Investimentos",
+      "Outros"
+    ];
+
+    const insertCat = db.prepare(`
+  INSERT OR IGNORE INTO categorias (usuario_id, nome)
+  VALUES (?, ?)
+`);
+
+    const insertCats = db.transaction((uid) => {
+      for (const c of categorias) {
+        insertCat.run(uid, c);
+      }
+    });
+
+    insertCats(userId);
 
     res.json({ ok: true });
 
@@ -95,6 +185,134 @@ app.post("/api/login", async (req, res) => {
 
   res.json({ token });
 });
+
+async function handleForgotPassword(req, res) {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+
+  // Sempre retorna ok para nao vazar quais emails existem no sistema.
+  if (!email) return res.json({ ok: true });
+
+  const user = db.prepare(`
+    SELECT id, email
+    FROM usuarios
+    WHERE lower(email) = ?
+  `).get(email);
+
+  if (!user) return res.json({ ok: true });
+
+  const token = String(Math.floor(100000 + Math.random() * 900000));
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const expiraEm = Date.now() + RESET_TOKEN_TTL_MS;
+
+  db.prepare(`
+    UPDATE usuarios
+    SET reset_token_hash = ?, reset_expires_at = ?
+    WHERE id = ?
+  `).run(tokenHash, expiraEm, user.id);
+
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.error("SMTP nao configurado. Defina SMTP_USER e SMTP_PASS.");
+    return res.status(500).json({ ok: false, erro: "SMTP nao configurado" });
+  }
+
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: user.email,
+      subject: "Recuperacao de senha - Cash Control",
+      text:
+        `Seu codigo de recuperacao e: ${token}\n\n` +
+        `Esse codigo expira em 15 minutos.\n` +
+        `Se nao foi voce, ignore este e-mail.`
+    });
+  } catch (err) {
+    console.error("Erro ao enviar e-mail de recuperacao:", err.message);
+    return res.status(500).json({ ok: false, erro: "Falha ao enviar email" });
+  }
+
+  return res.json({ ok: true });
+}
+
+async function handleResetPassword(req, res) {
+  try {
+    const token = String(req.body?.token || "").trim();
+    const senha = String(req.body?.senha || "");
+
+    console.log("TOKEN:", token || null);
+
+    if (!token || !senha) {
+      return res.status(400).json({ ok: false, erro: "Token e senha sao obrigatorios" });
+    }
+
+    if (senha.length < 6) {
+      return res.status(400).json({ ok: false, erro: "A senha deve ter pelo menos 6 caracteres" });
+    }
+
+    const user = getResetUserByToken(token);
+
+    console.log("USER:", user);
+
+    if (!user) {
+      return res.status(400).json({ ok: false, erro: "token nao encontrado" });
+    }
+
+    const expira = user.reset_expires_at ?? user.reset_expira;
+    if (!expira || Number(expira) < Date.now()) {
+      return res.status(400).json({ ok: false, erro: "token expirado" });
+    }
+
+    const hash = await bcrypt.hash(senha, 10);
+
+    const passResult = db.prepare(`
+      UPDATE usuarios
+      SET senha = ?
+      WHERE id = ?
+    `).run(hash, user.id);
+
+    const clearResult = clearResetTokenByUserId(user.id);
+
+    const result = {
+      changes: Number(passResult.changes || 0) + Number(clearResult.changes || 0)
+    };
+
+    console.log("UPDATE:", result);
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("ERRO REAL:", err);
+    return res.status(500).json({ ok: false, erro: err.message });
+  }
+}
+
+function handleValidateResetToken(req, res) {
+  const token = String(req.body?.token || "").trim();
+
+  if (!token) {
+    return res.status(400).json({ ok: false, erro: "Token obrigatorio" });
+  }
+
+  const user = getResetUserByToken(token);
+
+  if (!user) {
+    return res.json({ ok: false, erro: "Token invalido" });
+  }
+
+  const expira = user.reset_expires_at ?? user.reset_expira;
+  if (!expira || Number(expira) < Date.now()) {
+    return res.json({ ok: false, erro: "Token expirado" });
+  }
+
+  return res.json({ ok: true });
+}
+
+// Rotas novas (fluxo por codigo)
+app.post("/api/forgot", handleForgotPassword);
+app.post("/api/validar-token", handleValidateResetToken);
+app.post("/api/reset", handleResetPassword);
+
+// Compatibilidade com nomes antigos
+app.post("/api/forgot-password", handleForgotPassword);
+app.post("/api/reset-password", handleResetPassword);
 
 function auth(req, res, next) {
 
@@ -131,40 +349,27 @@ app.use(express.static(path.join(__dirname, "..", "src")));
 app.get("/api/movimentacoes", auth, (req, res) => {
 
   const mes = req.query.mes;
+  const userId = req.user.id;
 
   const mov = db.prepare(`
     SELECT
-      id,
-      data,
-      descricao,
-      valor,
-      tipo,
-      categoria_id,
+      m.id,
+      m.data,
+      m.descricao,
+      m.valor,
+      m.tipo,
+      c.nome as categoria,
       NULL as parcela_num,
       NULL as parcela_total
-    FROM movimentacoes
-    WHERE strftime('%Y-%m', data) = ?
-  `).all(mes);
+    FROM movimentacoes m
+    LEFT JOIN categorias c ON c.id = m.categoria_id
+      AND (c.usuario_id IS NULL OR c.usuario_id = ?)
+    WHERE strftime('%Y-%m', m.data) = ?
+      AND m.usuario_id = ?
+    ORDER BY m.data DESC
+  `).all(userId, mes, userId);
 
-  const cartao = db.prepare(`
-    SELECT
-      pc.id,
-      pc.mes_ref || '-01' as data,
-      cc.descricao,
-      pc.valor,
-      'saida' as tipo,
-      cc.categoria_id,
-      pc.numero_parcela as parcela_num,
-      pc.total_parcelas as parcela_total
-    FROM parcelas_cartao pc
-    JOIN compras_cartao cc ON cc.id = pc.compra_id
-    WHERE pc.mes_ref = ?
-    AND pc.status = 'aberta'
-  `).all(mes);
-
-  const resultado = [...mov, ...cartao].sort((a,b)=>b.data.localeCompare(a.data));
-
-  res.json(resultado);
+  res.json(mov);
 
 });
 
@@ -189,35 +394,39 @@ app.post("/api/movimentacoes", auth, (req, res) => {
 
 
 app.put("/api/movimentacoes/:id", auth, (req, res) => {
-  res.json(queries.editarMovimentacao(req.params.id, req.body));
+  res.json(queries.editarMovimentacao(req.params.id, req.body, req.user.id));
 });
 
 
 app.delete("/api/movimentacoes/:id", auth, (req, res) => {
-  res.json(queries.deletarMovimentacao(req.params.id));
+  res.json(queries.deletarMovimentacao(req.params.id, req.user.id));
 });
 
 
-app.get("/api/categorias", auth, (req,res)=> res.json(queries.getCategorias()));
-
-app.get("/api/categorias", (req, res) => {
-  res.json(queries.getCategorias());
+app.get("/api/categorias", auth, (req,res)=>{
+  res.json(queries.getCategorias(req.user.id));
 });
 
 
-app.post("/api/categorias", auth, (req, res) => {
-  const { nome } = req.body;
-  res.json(queries.addCategoria(nome));
+app.post("/api/categorias", auth, (req,res)=>{
+  const {nome} = req.body;
+  res.json(queries.addCategoria(req.user.id, nome));
 });
-
-
 
 app.get("/api/relatorio-categorias", auth, (req, res) => {
+
   const mes = req.query.mes;
+  const usuario_id = req.user.id;
+  const userId = req.user.id;
+
   if (!mes || !/^\d{4}-\d{2}$/.test(mes)) {
     return res.status(400).json({ ok:false, erro:"mes inválido (use YYYY-MM)" });
   }
-  res.json(queries.getRelatorioCategorias(mes));
+
+  res.json(
+    queries.getRelatorioCategorias(mes, usuario_id)
+  );
+
 });
 
 
@@ -226,7 +435,7 @@ app.get("/api/previsao", auth, (req, res) => {
   if (!mes || !/^\d{4}-\d{2}$/.test(mes)) {
     return res.status(400).json({ ok:false, erro:"mes inválido (use YYYY-MM)" });
   }
-  res.json(queries.getPrevisao(mes));
+  res.json(queries.getPrevisao(mes, req.user.id));
 });
 
 
@@ -234,10 +443,41 @@ app.get("/api/previsao", auth, (req, res) => {
 
 // ===== CARTÃO =====
 
-app.get("/api/cartoes", auth, (req, res) => res.json(queries.getCartoes()));
+app.get("/api/cartoes", auth, (req, res) =>
+  res.json(queries.getCartoes(req.user.id))
+);
+
 app.post("/api/cartoes", auth, (req, res) => {
   const { nome, limite, dia_fechamento, dia_vencimento } = req.body;
-  res.json(queries.addCartao(nome, limite, dia_fechamento, dia_vencimento));
+
+  res.json(
+    queries.addCartao(
+      req.user.id,
+      nome,
+      limite,
+      dia_fechamento,
+      dia_vencimento
+    )
+  );
+});
+
+app.put("/api/cartoes/:id", auth, (req, res) => {
+  const { nome, limite, dia_fechamento, dia_vencimento } = req.body;
+
+  res.json(
+    queries.updateCartao(
+      req.params.id,
+      req.user.id,
+      nome,
+      limite,
+      dia_fechamento,
+      dia_vencimento
+    )
+  );
+});
+
+app.delete("/api/cartoes/:id", auth, (req, res) => {
+  res.json(queries.deleteCartao(req.params.id, req.user.id));
 });
 
 app.post("/api/cartoes/compra", auth, (req, res) => {
@@ -245,7 +485,12 @@ app.post("/api/cartoes/compra", auth, (req, res) => {
   console.log("ROTA CARTAO CHAMADA");
   console.log(req.body);
 
-  const r = queries.criarCompraCartao(req.body);
+  const payload = {
+    ...req.body,
+    usuario_id: req.user.id,
+  };
+
+  const r = queries.criarCompraCartao(payload);
 
   console.log("RESULTADO:", r);
 
@@ -255,31 +500,40 @@ app.post("/api/cartoes/compra", auth, (req, res) => {
 app.get("/api/cartoes/:id/fatura", auth, (req, res) => {
   const mes = req.query.mes;
   if (!mes || !/^\d{4}-\d{2}$/.test(mes)) return res.status(400).json({ ok:false, erro:"mes inválido" });
-  res.json(queries.getFaturaCartao(req.params.id, mes));
+  res.json(queries.getFaturaCartao(req.params.id, mes, req.user.id));
 });
 
 app.patch("/api/cartoes/parcela/:id/status", auth, (req, res) => {
   const { status } = req.body;
-  res.json(queries.setParcelaStatus(req.params.id, status));
+  res.json(queries.setParcelaStatus(req.params.id, status, req.user.id));
 });
 
 app.delete("/api/cartoes/compra/:id", auth, (req, res) => {
-  res.json(queries.deleteCompraCartao(req.params.id));
+  res.json(queries.deleteCompraCartao(req.params.id, req.user.id));
 });
 
 
 app.get("/api/recorrencias", auth, (req, res) => {
-  res.json(queries.getRecorrencias());
+  res.json(queries.getRecorrencias(req.user.id));
 });
 
 app.post("/api/recorrencias", auth, (req, res) => {
   const { descricao, valor, tipo, categoria_id, dia_mes } = req.body;
-  res.json(queries.addRecorrencia(descricao, Number(valor), tipo, categoria_id ?? null, Number(dia_mes)));
+  res.json(
+    queries.addRecorrencia(
+      descricao,
+      Number(valor),
+      tipo,
+      categoria_id ?? null,
+      Number(dia_mes),
+      req.user.id
+    )
+  );
 });
 
 app.patch("/api/recorrencias/:id/ativo", auth, (req, res) => {
   const { ativo } = req.body;
-  res.json(queries.setRecorrenciaAtiva(req.params.id, !!ativo));
+  res.json(queries.setRecorrenciaAtiva(req.params.id, !!ativo, req.user.id));
 });
 
 app.get("/api/recorrencias/resumo", auth, (req, res) => {
@@ -287,7 +541,7 @@ app.get("/api/recorrencias/resumo", auth, (req, res) => {
 });
 
 app.delete("/api/recorrencias/:id", auth, (req, res) => {
-  res.json(queries.deleteRecorrencia(req.params.id));
+  res.json(queries.deleteRecorrencia(req.params.id, req.user.id));
 });
 
 app.put("/api/recorrencias/:id", auth, (req, res) => {
@@ -300,7 +554,8 @@ app.put("/api/recorrencias/:id", auth, (req, res) => {
       tipo,
       categoria_id ?? null,
       Number(dia_mes),
-      !!ativo
+      !!ativo,
+      req.user.id
     )
   );
 });
@@ -310,13 +565,13 @@ app.put("/api/recorrencias/:id", auth, (req, res) => {
 app.post("/api/recorrencias/gerar", auth, (req, res) => {
   const mes = req.query.mes;
   if (!mes || !/^\d{4}-\d{2}$/.test(mes)) return res.status(400).json({ ok:false, erro:"mes inválido (use YYYY-MM)" });
-  res.json(queries.gerarRecorrencias(mes));
+  res.json(queries.gerarRecorrencias(mes, req.user.id));
 });
 
 
 app.get("/api/resumo", auth, (req, res) => {
   const mes = req.query.mes;
-  const dados = queries.getResumo(mes);
+  const dados = queries.getResumo(mes, req.user.id);
   res.json(dados);
 });
 
@@ -327,24 +582,78 @@ app.post("/api/cartao/compra", auth, (req,res)=>{
 });
 
 
-app.get("/api/cartoes/:id/fatura", auth, (req,res)=>{
-  const cartaoId = Number(req.params.id);
-  const mes = req.query.mes;
-  res.json(queries.getFaturaCartao(cartaoId, mes));
-});
+app.post("/api/cartoes/:id/pagar", auth, (req, res) => {
 
+  const cartaoId = req.params.id;
+  const { mes } = req.body;
+  const usuario_id = req.user.id;
 
-app.post("/api/cartoes/:id/pagar", auth, (req,res)=>{
-  const cartao = Number(req.params.id);
-  const mes = req.body.mes;
-  const r = queries.pagarFatura(cartao, mes);
-  res.json(r);
+  const pagarFatura = db.transaction(() => {
+    const categorias = db.prepare(`
+      SELECT cc.categoria_id, c.nome as categoria_nome, SUM(pc.valor) as total
+      FROM parcelas_cartao pc
+      JOIN compras_cartao cc ON cc.id = pc.compra_id
+      LEFT JOIN categorias c ON c.id = cc.categoria_id
+      WHERE pc.cartao_id = ?
+      AND pc.mes_ref = ?
+      AND pc.status = 'aberta'
+      AND pc.usuario_id = ?
+      AND cc.usuario_id = ?
+      GROUP BY cc.categoria_id, c.nome
+    `).all(cartaoId, mes, usuario_id, usuario_id);
+
+    const total = categorias.reduce((acc, cat) => acc + Number(cat.total || 0), 0);
+
+    if (total === 0) {
+      return { semParcelas: true };
+    }
+
+    db.prepare(`
+      UPDATE parcelas_cartao
+      SET status = 'paga'
+      WHERE cartao_id = ?
+      AND mes_ref = ?
+      AND usuario_id = ?
+    `).run(cartaoId, mes, usuario_id);
+
+    const insertMov = db.prepare(`
+      INSERT INTO movimentacoes (
+        descricao,
+        valor,
+        tipo,
+        origem,
+        categoria_id,
+        data,
+        usuario_id
+      )
+      VALUES (?, ?, 'saida', 'cartao', ?, date('now'), ?)
+    `);
+
+    for (const cat of categorias) {
+      insertMov.run(
+        `Fatura (${mes}) - ${cat.categoria_nome || "Sem categoria"}`,
+        Number(cat.total || 0),
+        cat.categoria_id,
+        usuario_id
+      );
+    }
+
+    return { semParcelas: false, total, lancamentos: categorias.length };
+  });
+
+  const resultado = pagarFatura();
+
+  if (resultado.semParcelas) {
+    return res.status(400).json({ erro: "Nenhuma parcela encontrada pra pagar" });
+  }
+
+  res.json({ ok: true, total: resultado.total, lancamentos: resultado.lancamentos });
 });
 
 
 app.get("/api/dashboard", auth, (req,res)=>{
   const mes = req.query.mes;
-  const dados = queries.getDashboard(mes);
+  const dados = queries.getDashboard(mes, req.user.id);
   res.json(dados);
 });
 
@@ -357,14 +666,14 @@ app.post("/api/metas", auth, (req,res)=>{
 
 app.get("/api/metas", auth, (req,res)=>{
   const {mes} = req.query;
-  const dados = queries.getMetasComGasto(mes);
+  const dados = queries.getMetasComGasto(mes, req.user.id);
   res.json(dados);
 });
 
 
 app.get("/api/cartoes/:id/controle", auth, (req,res)=>{
   const cartaoId = Number(req.params.id);
-  res.json(queries.getControleCartao(cartaoId));
+  res.json(queries.getControleCartao(cartaoId, req.user.id));
 });
 
 
@@ -384,18 +693,11 @@ FROM (
     CASE WHEN tipo='saida' THEN valor ELSE 0 END as saidas
   FROM movimentacoes
   WHERE strftime('%Y', data)=?
+    AND usuario_id = ?
 
-  UNION ALL
-
-  SELECT
-    strftime('%m', mes_ref || '-01') as mes_num,
-    0 as entradas,
-    valor as saidas
-  FROM parcelas_cartao
-
-) 
+)
 GROUP BY mes_num
-  `).all(ano);
+  `).all(ano, req.user.id);
 
   const mapa = {};
   dados.forEach(d => {
@@ -436,8 +738,9 @@ app.get("/api/relatorio-pdf", auth, (req, res) => {
     SELECT data, descricao, tipo, valor
     FROM movimentacoes
     WHERE strftime('%Y-%m', data) = ?
+      AND usuario_id = ?
     ORDER BY data
-  `).all(mes);
+  `).all(mes, req.user.id);
 
   const PDFDocument = require("pdfkit");
   const doc = new PDFDocument({ margin: 50 });
@@ -595,10 +898,52 @@ app.get("/api/cartoes/:id/previsao", auth, (req,res)=>{
 
   const cartaoId = Number(req.params.id);
 
-  const dados = queries.getPrevisaoCartao(cartaoId);
+  const dados = queries.getPrevisaoCartao(cartaoId, req.user.id);
 
   res.json(dados);
 
+});
+
+app.get("/api/diario", auth, (req, res) => {
+  const mes = req.query.mes; // formato: 2026-03
+  const usuario_id = req.user.id;
+
+  const dados = db.prepare(`
+    SELECT
+      strftime('%d', data) as dia,
+      SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END) as entradas,
+      SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END) as saidas
+    FROM movimentacoes
+    WHERE substr(data,1,7) = ?
+      AND usuario_id = ?
+    GROUP BY dia
+  `).all(mes, usuario_id);
+
+  const mapa = {};
+  dados.forEach(d => {
+    mapa[d.dia] = {
+      entradas: d.entradas || 0,
+      saidas: d.saidas || 0
+    };
+  });
+
+  // pega quantidade de dias do mês
+  const [ano, mesNum] = mes.split("-");
+  const diasNoMes = new Date(ano, mesNum, 0).getDate();
+
+  const resultado = [];
+
+  for (let i = 1; i <= diasNoMes; i++) {
+    const dia = String(i).padStart(2, "0");
+
+    resultado.push({
+      dia,
+      entradas: mapa[dia]?.entradas || 0,
+      saidas: mapa[dia]?.saidas || 0
+    });
+  }
+
+  res.json(resultado);
 });
 
 //temporarios

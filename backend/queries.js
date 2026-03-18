@@ -1,30 +1,41 @@
 const db = require("./db");
 
-
-function getCategorias() {
-  return db.prepare("SELECT * FROM categorias").all();
+function formatMes(date){
+  return date.getFullYear() + "-" + String(date.getMonth()+1).padStart(2,"0");
 }
 
-function addCategoria(nome) {
-  return db.prepare("INSERT INTO categorias (nome) VALUES (?)").run(nome);
-}
-
-function inserirMovimentacao(descricao, valor, tipo, categoria_id, data) {
+function getCategorias(usuario_id) {
   return db.prepare(`
-    INSERT INTO movimentacoes (descricao, valor, tipo, categoria_id, data)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(descricao, valor, tipo, categoria_id, data);
+    SELECT *
+    FROM categorias
+    WHERE usuario_id = ?
+    ORDER BY nome
+  `).all(usuario_id);
 }
 
-function updateMovimentacao(id, descricao, valor, tipo, categoria_id, data) {
+function addCategoria(usuario_id, nome) {
+  return db.prepare(`
+    INSERT INTO categorias (usuario_id, nome)
+    VALUES (?, ?)
+  `).run(usuario_id, nome);
+}
+
+function inserirMovimentacao(descricao, valor, tipo, categoria_id, data, usuario_id) {
+  return db.prepare(`
+    INSERT INTO movimentacoes (descricao, valor, tipo, categoria_id, data, usuario_id)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(descricao, valor, tipo, categoria_id, data, usuario_id);
+}
+
+function updateMovimentacao(id, descricao, valor, tipo, categoria_id, data, usuario_id) {
   return db.prepare(`
     UPDATE movimentacoes
     SET descricao=?, valor=?, tipo=?, categoria_id=?, data=?
-    WHERE id=?
-  `).run(descricao, valor, tipo, categoria_id, data, id);
+    WHERE id=? AND usuario_id = ?
+  `).run(descricao, valor, tipo, categoria_id, data, id, usuario_id);
 }
 
-function getSaldoAtual(){
+function getSaldoAtual(usuario_id){
 
   const hoje = new Date().toISOString().slice(0,10);
 
@@ -37,12 +48,13 @@ function getSaldoAtual(){
     ),0) AS saldo
     FROM movimentacoes
     WHERE data <= ?
-  `).get(hoje);
+      AND usuario_id = ?
+  `).get(hoje, usuario_id);
 
   return row.saldo;
 }
 
-function getResumo(mesYYYYMM) {
+function getResumo(mesYYYYMM, usuario_id) {
 
   const row = db.prepare(`
     SELECT
@@ -56,12 +68,13 @@ function getResumo(mesYYYYMM) {
       ),0) AS saldo
     FROM movimentacoes
     WHERE substr(data,1,7)=?
-  `).get(mesYYYYMM);
+      AND usuario_id = ?
+  `).get(mesYYYYMM, usuario_id);
 
   return row;
 }
 
-function relatorioPorCategoria(mes) {
+function relatorioPorCategoria(mes, usuario_id = null) {
   return db.prepare(`
     SELECT
       c.nome AS categoria,
@@ -70,10 +83,12 @@ function relatorioPorCategoria(mes) {
     FROM categorias c
     LEFT JOIN movimentacoes t
       ON t.categoria_id = c.id
+     AND (c.usuario_id IS NULL OR c.usuario_id = ?)
      AND substr(t.data, 1, 7) = ?
+    WHERE (c.usuario_id IS NULL OR c.usuario_id = ?)
     GROUP BY c.id
     ORDER BY total_saidas DESC, total_entradas DESC
-  `).all(mes);
+  `).all(usuario_id, mes, usuario_id);
 }
 
 function getPrevisaoMes(mesYYYYMM){
@@ -90,36 +105,38 @@ function getPrevisaoMes(mesYYYYMM){
 
 }
 
-function getRecorrencias() {
+function getRecorrencias(usuario_id = null) {
   return db.prepare(`
     SELECT r.*, c.nome as categoria
     FROM recorrencias r
     LEFT JOIN categorias c ON c.id = r.categoria_id
+      AND (c.usuario_id IS NULL OR c.usuario_id = ?)
+    WHERE r.usuario_id = ?
     ORDER BY r.dia_mes ASC, r.id DESC
-  `).all();
+  `).all(usuario_id, usuario_id);
 }
 
-function addRecorrencia(descricao, valor, tipo, categoria_id, dia_mes) {
+function addRecorrencia(descricao, valor, tipo, categoria_id, dia_mes, usuario_id) {
   return db.prepare(`
-    INSERT INTO recorrencias (descricao, valor, tipo, categoria_id, dia_mes)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(descricao, valor, tipo, categoria_id ?? null, dia_mes);
+    INSERT INTO recorrencias (descricao, valor, tipo, categoria_id, dia_mes, ativo, usuario_id)
+    VALUES (?, ?, ?, ?, ?, 1, ?)
+  `).run(descricao, valor, tipo, categoria_id ?? null, dia_mes, usuario_id);
 }
 
-function setRecorrenciaAtiva(id, ativo) {
-  return db.prepare("UPDATE recorrencias SET ativo=? WHERE id=?").run(ativo ? 1 : 0, id);
+function setRecorrenciaAtiva(id, ativo, usuario_id) {
+  return db.prepare("UPDATE recorrencias SET ativo=? WHERE id=? AND usuario_id=?").run(ativo ? 1 : 0, id, usuario_id);
 }
 
-function deleteRecorrencia(id) {
-  return db.prepare("DELETE FROM recorrencias WHERE id=?").run(id);
+function deleteRecorrencia(id, usuario_id) {
+  return db.prepare("DELETE FROM recorrencias WHERE id=? AND usuario_id=?").run(id, usuario_id);
 }
 
-function updateRecorrencia(id, descricao, valor, tipo, categoria_id, dia_mes, ativo) {
+function updateRecorrencia(id, descricao, valor, tipo, categoria_id, dia_mes, ativo, usuario_id) {
   return db.prepare(`
     UPDATE recorrencias
     SET descricao=?, valor=?, tipo=?, categoria_id=?, dia_mes=?, ativo=?
-    WHERE id=?
-  `).run(descricao, valor, tipo, categoria_id ?? null, dia_mes, ativo ? 1 : 0, id);
+    WHERE id=? AND usuario_id=?
+  `).run(descricao, valor, tipo, categoria_id ?? null, dia_mes, ativo ? 1 : 0, id, usuario_id);
 }
 
 function resumoRecorrencias() {
@@ -134,13 +151,13 @@ function resumoRecorrencias() {
   `).get();
 }
 
-function gerarRecorrencias(mesYYYYMM) {
-  const recorrs = db.prepare("SELECT * FROM recorrencias WHERE ativo = 1").all();
+function gerarRecorrencias(mesYYYYMM, usuario_id) {
+  const recorrs = db.prepare("SELECT * FROM recorrencias WHERE ativo = 1 AND usuario_id = ?").all(usuario_id);
 
   const inserir = db.prepare(`
   INSERT INTO movimentacoes
-  (descricao, valor, tipo, origem, categoria_id, data)
-  VALUES (?, ?, ?, 'pix', ?, ?)
+  (descricao, valor, tipo, origem, categoria_id, data, usuario_id)
+  VALUES (?, ?, ?, 'pix', ?, ?, ?)
 `);
 
   let criadas = 0;
@@ -149,12 +166,12 @@ function gerarRecorrencias(mesYYYYMM) {
 
     const existe = db.prepare(`
       SELECT 1 FROM movimentacoes
-      WHERE descricao=? AND valor=? AND tipo=? AND IFNULL(categoria_id,0)=IFNULL(?,0) AND data=?
+      WHERE descricao=? AND valor=? AND tipo=? AND IFNULL(categoria_id,0)=IFNULL(?,0) AND data=? AND usuario_id = ?
       LIMIT 1
-    `).get(r.descricao, r.valor, r.tipo, r.categoria_id, data);
+    `).get(r.descricao, r.valor, r.tipo, r.categoria_id, data, usuario_id);
 
     if (!existe) {
-      inserir.run(r.descricao, r.valor, r.tipo, r.categoria_id, data);
+      inserir.run(r.descricao, r.valor, r.tipo, r.categoria_id, data, usuario_id);
       criadas++;
     }
   }
@@ -162,15 +179,52 @@ function gerarRecorrencias(mesYYYYMM) {
 }
 
 // ===== CARTÃO DE CRÉDITO =====
-function addCartao(nome, limite, dia_fechamento, dia_vencimento) {
+function addCartao(usuario_id, nome, limite, dia_fechamento, dia_vencimento) {
   return db.prepare(`
-    INSERT INTO cartoes (nome, limite, dia_fechamento, dia_vencimento)
-    VALUES (?, ?, ?, ?)
-  `).run(nome, Number(limite || 0), Number(dia_fechamento), Number(dia_vencimento));
+    INSERT INTO cartoes
+    (usuario_id, nome, limite, dia_fechamento, dia_vencimento)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(usuario_id, nome, limite, dia_fechamento, dia_vencimento);
 }
 
-function getCartoes() {
-  return db.prepare("SELECT * FROM cartoes WHERE ativo=1 ORDER BY nome").all();
+function getCartoes(usuario_id) {
+  return db.prepare(`
+    SELECT *
+    FROM cartoes
+    WHERE usuario_id = ?
+    AND ativo = 1
+    ORDER BY nome
+  `).all(usuario_id);
+}
+
+function updateCartao(id, usuario_id, nome, limite, dia_fechamento, dia_vencimento) {
+  return db.prepare(`
+    UPDATE cartoes
+    SET nome = ?,
+        limite = ?,
+        dia_fechamento = ?,
+        dia_vencimento = ?
+    WHERE id = ?
+      AND usuario_id = ?
+      AND ativo = 1
+  `).run(
+    nome,
+    Number(limite || 0),
+    Number(dia_fechamento),
+    Number(dia_vencimento),
+    Number(id),
+    usuario_id
+  );
+}
+
+function deleteCartao(id, usuario_id) {
+  return db.prepare(`
+    UPDATE cartoes
+    SET ativo = 0
+    WHERE id = ?
+      AND usuario_id = ?
+      AND ativo = 1
+  `).run(Number(id), usuario_id);
 }
 
 function yyyymmFromDate(yyyy_mm_dd) {
@@ -200,14 +254,16 @@ function criarCompraCartao({
   parcelas,
   juros_mensal,
   data_compra,
-  categoria_id
+  categoria_id,
+  usuario_id
 }) {
 
   const cartao = db.prepare(`
     SELECT dia_fechamento
     FROM cartoes
     WHERE id = ?
-  `).get(cartao_id);
+      AND usuario_id = ?
+  `).get(cartao_id, usuario_id);
 
   if (!cartao) {
     return { ok:false, erro:"Cartão não encontrado" };
@@ -215,36 +271,50 @@ function criarCompraCartao({
 
   const insertCompra = db.prepare(`
     INSERT INTO compras_cartao
-    (cartao_id, descricao, valor_total, parcelas, juros_mensal, data_compra, categoria_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    (cartao_id, descricao, valor_total, parcelas, juros_mensal, data_compra, categoria_id, usuario_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertParcela = db.prepare(`
-    INSERT INTO parcelas_cartao
-    (compra_id, cartao_id, numero_parcela, total_parcelas, mes_ref, valor, status)
-    VALUES (?, ?, ?, ?, ?, ?, 'aberta')
+    INSERT INTO parcelas_cartao (
+  cartao_id,
+  valor,
+  numero_parcela,
+  total_parcelas,
+  mes_ref,
+  usuario_id,
+  status,
+  compra_id
+)
+VALUES (?, ?, ?, ?, ?, ?, 'aberta', ?)
   `);
 
-  const data = new Date(data_compra);
-  const diaCompra = data.getDate();
+ const data = new Date(data_compra);
+const diaCompra = data.getDate();
 
-  let mes0 = data_compra.slice(0,7);
+// cria a data no primeiro dia do mês da compra
+let mes0Date = new Date(data.getFullYear(), data.getMonth(), 1);
 
-  if (diaCompra > cartao.dia_fechamento) {
-    const d = new Date(data_compra);
-    d.setMonth(d.getMonth() + 1);
-    mes0 = d.toISOString().slice(0,7);
-  }
+// se passou do fechamento → vai para próxima fatura
+if (data.getDate() > cartao.dia_fechamento) {
+  mes0Date.setMonth(mes0Date.getMonth() + 1);
+}
+
+const mes0 =
+  mes0Date.getFullYear() +
+  "-" +
+  String(mes0Date.getMonth() + 1).padStart(2, "0");
 
   const compra = insertCompra.run(
-    cartao_id,
-    descricao,
-    Number(valor_total),
-    Number(parcelas),
-    Number(juros_mensal || 0),
-    data_compra,
-    categoria_id ?? null
-  );
+  cartao_id,
+  descricao,
+  Number(valor_total),
+  Number(parcelas),
+  Number(juros_mensal || 0),
+  data_compra,
+  categoria_id ?? null,
+  usuario_id
+);
 
   const compraId = compra.lastInsertRowid;
 
@@ -254,54 +324,63 @@ function criarCompraCartao({
   const parcelaBase = Math.floor((total / N) * 100) / 100;
 
   let totalDistribuido = 0;
-
+console.log("mes inicial:", mes0Date);
   for (let p = 1; p <= N; p++) {
 
-    let valorParcela = parcelaBase;
+  let valorParcela = parcelaBase;
 
-    if (p === N) {
-      valorParcela = Number((total - totalDistribuido).toFixed(2));
-    }
-
-    totalDistribuido += valorParcela;
-
-    const d = new Date(mes0 + "-01");
-    d.setMonth(d.getMonth() + (p - 1));
-
-    const mesRef = d.toISOString().slice(0,7);
-
-    insertParcela.run(
-      compraId,
-      cartao_id,
-      p,
-      N,
-      mesRef,
-      valorParcela
-    );
+  if (p === N) {
+    valorParcela = Number((total - totalDistribuido).toFixed(2));
   }
+
+  totalDistribuido += valorParcela;
+
+  const d = new Date(mes0Date);
+  d.setMonth(mes0Date.getMonth() + (p - 1));
+
+  const mesRef =
+    d.getFullYear() +
+    "-" +
+    String(d.getMonth() + 1).padStart(2, "0");
+
+  insertParcela.run(
+  cartao_id,     // 1
+  valorParcela,  // 2
+  p,             // 3
+  N,             // 4
+  mesRef,        // 5
+  usuario_id,    // 6 🔥
+  compraId       // 7 🔥
+);
+}
 
   return { ok:true, compraId };
 }
 
-function getFaturaCartao(cartao_id, mes){
+function getFaturaCartao(cartao_id, mes, usuario_id = null){
 
   const itens = db.prepare(`
     SELECT
-      pc.compra_id, 
+      pc.compra_id,
       pc.numero_parcela,
       pc.total_parcelas,
       cc.descricao,
-      pc.valor,
       cc.categoria_id,
+      c.nome AS categoria,
+      pc.valor,
       pc.mes_ref,
       pc.status
     FROM parcelas_cartao pc
     JOIN compras_cartao cc ON cc.id = pc.compra_id
+    JOIN cartoes ca ON ca.id = pc.cartao_id
+    LEFT JOIN categorias c ON c.id = cc.categoria_id
+      AND (c.usuario_id IS NULL OR c.usuario_id = ?)
     WHERE pc.cartao_id = ?
-    AND pc.mes_ref = ?
-    AND pc.status = 'aberta'
+      AND pc.mes_ref = ?
+      AND pc.status = 'aberta'
+      AND ca.usuario_id = ?
     ORDER BY pc.numero_parcela
-  `).all(cartao_id, mes);
+  `).all(usuario_id, cartao_id, mes, usuario_id);
 
   const total = itens.reduce((s,x)=> s + Number(x.valor),0);
 
@@ -313,36 +392,7 @@ function getFaturaCartao(cartao_id, mes){
   };
 }
 
-function pagarFatura(cartao_id, mes){
-
-  const fatura = getFaturaCartao(cartao_id, mes);
-
-  if(!fatura.itens.length) {
-    return {ok:false, erro:"Fatura vazia"};
-  }
-
-  // cria movimentação de pagamento
-  db.prepare(`
-    INSERT INTO movimentacoes
-    (descricao, valor, tipo, origem, data)
-    VALUES (?, ?, 'saida', 'cartao_credito', date('now'))
-  `).run(
-    `Pagamento fatura cartão ${cartao_id} ${mes}`,
-    fatura.total
-  );
-
-  // marca parcelas como pagas
-  db.prepare(`
-    UPDATE parcelas_cartao
-    SET status='paga'
-    WHERE cartao_id = ?
-    AND mes_ref = ?
-  `).run(cartao_id, mes);
-
-  return {ok:true};
-}
-
-function getFaturasMes(mesYYYYMM) {
+function getFaturasMes(mesYYYYMM, usuario_id) {
   return db.prepare(`
     SELECT
       ca.id AS cartao_id,
@@ -354,18 +404,31 @@ function getFaturasMes(mesYYYYMM) {
       AND pc.mes_ref = ?
       AND pc.status = 'aberta'
     WHERE ca.ativo = 1
+      AND ca.usuario_id = ?
     GROUP BY ca.id
     HAVING total > 0
     ORDER BY total DESC
-  `).all(mesYYYYMM);
+  `).all(mesYYYYMM, usuario_id);
 }
 
 
-function setParcelaStatus(id, status) {
-  return db.prepare("UPDATE parcelas_cartao SET status=? WHERE id=?").run(status, Number(id));
+function setParcelaStatus(id, status, usuario_id) {
+  return db.prepare("UPDATE parcelas_cartao SET status=? WHERE id=? AND cartao_id IN (SELECT id FROM cartoes WHERE usuario_id = ?)"
+  ).run(status, Number(id), usuario_id);
 }
 
-function deleteCompraCartao(id) {
+function deleteCompraCartao(id, usuario_id) {
+  const compra = db.prepare(`
+    SELECT cc.id
+    FROM compras_cartao cc
+    JOIN cartoes ca ON ca.id = cc.cartao_id
+    WHERE cc.id = ?
+      AND ca.usuario_id = ?
+  `).get(id, usuario_id);
+
+  if (!compra) {
+    return { ok: false, erro: "Acesso negado" };
+  }
 
   // apaga parcelas primeiro
   db.prepare(`
@@ -374,50 +437,19 @@ function deleteCompraCartao(id) {
   `).run(id);
 
   // depois apaga a compra
-  return db.prepare(`
+  db.prepare(`
     DELETE FROM compras_cartao
     WHERE id = ?
   `).run(id);
+
+  return { ok: true };
 }
 
+// ===== FIM CARTÃO DE CRÉDITO =====
 
-function criarMovimentacao(data) {
-  const stmt = db.prepare(`
-    INSERT INTO movimentacoes
-    (descricao, valor, tipo, origem, categoria_id, data)
-    VALUES (?,?,?,?,?,?)
-  `);
-  return stmt.run(
-    data.descricao,
-    data.valor,
-    data.tipo,
-    data.origem,
-    data.categoria_id,
-    data.data
-  );
-}
 
-function editarMovimentacao(id, data) {
-  return db.prepare(`
-    UPDATE movimentacoes
-    SET descricao=?, valor=?, tipo=?, origem=?, categoria_id=?, data=?
-    WHERE id=?
-  `).run(
-    data.descricao,
-    data.valor,
-    data.tipo,
-    data.origem,
-    data.categoria_id,
-    data.data,
-    id
-  );
-}
 
-function deletarMovimentacao(id){
-  return db.prepare(`DELETE FROM movimentacoes WHERE id=?`).run(id);
-}
-
-function getRelatorioCategorias(mes) {
+function getRelatorioCategorias(mes, usuario_id) {
 
   return db.prepare(`
 
@@ -439,31 +471,28 @@ function getRelatorioCategorias(mes) {
         CASE WHEN tipo='entrada' THEN valor ELSE 0 END as entradas
       FROM movimentacoes
       WHERE substr(data,1,7)=?
-
-      UNION ALL
-
-      SELECT
-        cc.categoria_id,
-        pc.valor as saidas,
-        0 as entradas
-      FROM parcelas_cartao pc
-      JOIN compras_cartao cc ON cc.id = pc.compra_id
-      WHERE pc.mes_ref = ?
-      AND pc.status != 'cancelada'
+        AND usuario_id = ?
 
   ) mov ON mov.categoria_id = c.id
 
   LEFT JOIN metas_categoria meta
     ON meta.categoria_id = c.id
     AND meta.mes = ?
+    AND meta.usuario_id = ?
+
+  WHERE c.usuario_id = ?
 
   GROUP BY c.id
   ORDER BY total_saidas DESC
 
-  `).all(mes, mes, mes);
+  `).all(
+    mes, usuario_id,
+    mes, usuario_id,
+    usuario_id
+  );
 }
 
-function getPrevisao(mesYYYYMM) {
+function getPrevisao(mesYYYYMM, usuario_id) {
   const hoje = new Date();
   const y = hoje.getFullYear();
   const m = String(hoje.getMonth() + 1).padStart(2, "0");
@@ -484,7 +513,8 @@ function getPrevisao(mesYYYYMM) {
     FROM recorrencias
     WHERE ativo = 1
       AND dia_mes >= ?
-  `).get(diaMin);
+      AND usuario_id = ?
+  `).get(diaMin, usuario_id);
 
   const atual = db.prepare(`
   SELECT
@@ -496,7 +526,8 @@ function getPrevisao(mesYYYYMM) {
     ),0) AS saldo_atual
   FROM movimentacoes
   WHERE data <= date('now')
-`).get();
+    AND usuario_id = ?
+`).get(usuario_id);
 
   const saldo_previsto =
     Number(atual.saldo_atual) + Number(rec.entradas_previstas) - Number(rec.saidas_previstas);
@@ -510,12 +541,11 @@ function getPrevisao(mesYYYYMM) {
   };
 }
 
-
 function round2(n) { return Math.round(Number(n) * 100) / 100; }
 
-function getMovimentacoes(mes){
+function getMovimentacoes(mes, usuario_id = null){
 
-  const mov = db.prepare(`
+  return db.prepare(`
     SELECT
       m.id,
       m.data,
@@ -527,83 +557,53 @@ function getMovimentacoes(mes){
       NULL as parcela_total
     FROM movimentacoes m
     LEFT JOIN categorias c ON c.id = m.categoria_id
+      AND (c.usuario_id IS NULL OR c.usuario_id = ?)
     WHERE strftime('%Y-%m', m.data) = ?
-  `).all(mes);
+      AND m.usuario_id = ?
+    ORDER BY m.data DESC
+  `).all(usuario_id, mes, usuario_id);
 
-
-  const cartao = db.prepare(`
-    SELECT
-      pc.id,
-      pc.mes_ref || '-01' as data,
-      cc.descricao,
-      pc.valor,
-      'saida' as tipo,
-      cat.nome as categoria,
-      pc.numero_parcela as parcela_num,
-      pc.total_parcelas as parcela_total
-    FROM parcelas_cartao pc
-    JOIN compras_cartao cc ON cc.id = pc.compra_id
-    LEFT JOIN categorias cat ON cat.id = cc.categoria_id
-    WHERE pc.mes_ref = ?
-      AND pc.status != 'cancelada'
-  `).all(mes);
-
-  return [...mov, ...cartao].sort((a,b)=>b.data.localeCompare(a.data));
 }
-
 
 function criarMovimentacao(payload) {
 
   const {
-    descricao, valor, tipo, origem, data, categoria_id,
-    cartao_id = null,
-    parcelas = 1,
-    juros_mensal = 0
+    descricao,
+    valor,
+    tipo,
+    origem,
+    data,
+    categoria_id,
+    usuario_id
   } = payload;
 
-  const insert = db.prepare(`
-    INSERT INTO movimentacoes
-    (descricao, valor, tipo, origem, data, categoria_id, cartao_id, grupo_id, parcela_num, parcela_total, juros_mensal, status)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-  `);
-
-  // CARTÃO PARCELADO
-  if (origem === "cartao_credito" && Number(parcelas) > 1) {
-
-    const grupoId = `cc-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-
-    const mes0 = String(data).slice(0, 7);
-    const dia = String(data).slice(8, 10);
-
-    const N = Number(parcelas);
-    const valorParcela = round2(Number(valor) / N);
-
-    for (let p = 1; p <= N; p++) {
-
-      const mesRef = addMonths(mes0, p - 1);
-      const dataParcela = `${mesRef}-${dia}`;
-
-      insert.run(
-        descricao,
-        valorParcela,
-        "saida",
-        "cartao_credito",
-        dataParcela,
-        categoria_id ?? null,
-        cartao_id ?? null,
-        grupoId,
-        p,
-        N,
-        0,
-        "aberta"
-      );
-    }
-
-    return { ok: true };
+  if (origem === "cartao_credito") {
+    return criarCompraCartao(payload);
   }
 
-  // MOVIMENTAÇÃO NORMAL
-  return insert.run(
+  return db.prepare(`
+    INSERT INTO movimentacoes
+    (descricao, valor, tipo, origem, data, categoria_id, usuario_id)
+    VALUES (?,?,?,?,?,?,?)
+  `).run(
+    descricao,
+    round2(valor),
+    tipo,
+    origem,
+    data,
+    categoria_id ?? null,
+    usuario_id
+  );
+}
+
+function editarMovimentacao(id, payload, usuario_id) {
+  const { descricao, valor, tipo, origem, data, categoria_id, cartao_id } = payload;
+
+  return db.prepare(`
+    UPDATE movimentacoes
+    SET descricao=?, valor=?, tipo=?, origem=?, data=?, categoria_id=?, cartao_id=?
+    WHERE id=? AND usuario_id = ?
+  `).run(
     descricao,
     round2(valor),
     tipo,
@@ -611,35 +611,23 @@ function criarMovimentacao(payload) {
     data,
     categoria_id ?? null,
     cartao_id ?? null,
-    null,
-    null,
-    null,
-    0,
-    "aberta"
+    Number(id),
+    usuario_id
   );
 }
 
-function editarMovimentacao(id, payload) {
-  const { descricao, valor, tipo, origem, data, categoria_id, cartao_id } = payload;
-
-  return db.prepare(`
-    UPDATE movimentacoes
-    SET descricao=?, valor=?, tipo=?, origem=?, data=?, categoria_id=?, cartao_id=?
-    WHERE id=? AND (grupo_id IS NULL)
-  `).run(descricao, round2(valor), tipo, origem, data, categoria_id ?? null, cartao_id ?? null, Number(id));
+function deletarMovimentacao(id, usuario_id) {
+  return db.prepare(`DELETE FROM movimentacoes WHERE id=? AND usuario_id = ?`).run(Number(id), usuario_id);
 }
 
-function deletarMovimentacao(id) {
-  return db.prepare(`DELETE FROM movimentacoes WHERE id=?`).run(Number(id));
-}
-
-function getLimiteCartao(cartao_id){
+function getLimiteCartao(cartao_id, usuario_id){
 
   const cartao = db.prepare(`
     SELECT limite
     FROM cartoes
     WHERE id=?
-  `).get(cartao_id);
+      AND usuario_id = ?
+  `).get(cartao_id, usuario_id);
 
   const usado = db.prepare(`
     SELECT COALESCE(SUM(valor),0) as total
@@ -654,7 +642,7 @@ function getLimiteCartao(cartao_id){
   };
 }
 
-function getDashboard(mes){
+function getDashboard(mes, usuario_id) {
 
   const resumo = db.prepare(`
     SELECT
@@ -662,7 +650,8 @@ function getDashboard(mes){
       COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) as saidas
     FROM movimentacoes
     WHERE substr(data,1,7)=?
-  `).get(mes);
+      AND usuario_id = ?
+  `).get(mes, usuario_id);
 
   const saldo = db.prepare(`
     SELECT
@@ -673,13 +662,17 @@ function getDashboard(mes){
         END
       ),0) as saldo
     FROM movimentacoes
-  `).get();
+    WHERE usuario_id = ?
+  `).get(usuario_id);
 
   const fatura = db.prepare(`
-    SELECT COALESCE(SUM(valor),0) as total
-    FROM parcelas_cartao
-    WHERE mes_ref = ?
-  `).get(mes);
+    SELECT COALESCE(SUM(pc.valor),0) as total
+    FROM parcelas_cartao pc
+    JOIN compras_cartao cc ON cc.id = pc.compra_id
+    WHERE pc.mes_ref = ?
+      AND pc.status = 'aberta'
+      AND cc.usuario_id = ?
+  `).get(mes, usuario_id);
 
   return {
     saldo: saldo.saldo,
@@ -699,7 +692,7 @@ function setMetaCategoria(usuario_id, categoria_id, valor_meta, mes) {
   `).run(usuario_id, categoria_id, mes, valor_meta);
 }
 
-function getMetasComGasto(mes) {
+function getMetasComGasto(mes, usuario_id = null) {
   return db.prepare(`
     SELECT
       c.nome as categoria,
@@ -709,20 +702,24 @@ function getMetasComGasto(mes) {
       ),0) as gasto_mes
     FROM metas_categoria m
     JOIN categorias c ON c.id = m.categoria_id
+      AND (c.usuario_id IS NULL OR c.usuario_id = ?)
     LEFT JOIN movimentacoes mov
       ON mov.categoria_id = c.id
      AND substr(mov.data,1,7)=?
+     AND mov.usuario_id = ?
+    WHERE m.usuario_id = ?
     GROUP BY c.id
-  `).all(mes);
+  `).all(usuario_id, mes, usuario_id, usuario_id);
 }
 
-function getControleCartao(cartao_id) {
+function getControleCartao(cartao_id, usuario_id) {
 
   const cartao = db.prepare(`
     SELECT id, nome, limite
     FROM cartoes
     WHERE id = ?
-  `).get(cartao_id);
+      AND usuario_id = ?
+  `).get(cartao_id, usuario_id);
 
   if (!cartao) return null;
 
@@ -748,29 +745,32 @@ function getControleCartao(cartao_id) {
   };
 }
 
-function getPrevisaoCartao(cartao_id){
+function getPrevisaoCartao(cartao_id, usuario_id){
 
   return db.prepare(`
     SELECT
-      mes_ref,
-      SUM(valor) as total
-    FROM parcelas_cartao
-    WHERE cartao_id = ?
-      AND status = 'aberta'
-      AND mes_ref >= strftime('%Y-%m','now')
-    GROUP BY mes_ref
-    ORDER BY mes_ref
-  `).all(cartao_id);
+      pc.mes_ref,
+      SUM(pc.valor) as total
+    FROM parcelas_cartao pc
+    JOIN cartoes ca ON ca.id = pc.cartao_id
+    WHERE pc.cartao_id = ?
+      AND pc.status = 'aberta'
+      AND pc.mes_ref >= strftime('%Y-%m','now')
+      AND ca.usuario_id = ?
+    GROUP BY pc.mes_ref
+    ORDER BY pc.mes_ref
+  `).all(cartao_id, usuario_id);
 
 }
 
-function getMesFaturaAtual(cartao_id){
+function getMesFaturaAtual(cartao_id, usuario_id){
 
   const cartao = db.prepare(`
     SELECT dia_fechamento
     FROM cartoes
     WHERE id = ?
-  `).get(cartao_id);
+      AND usuario_id = ?
+  `).get(cartao_id, usuario_id);
 
   const hoje = new Date();
 
@@ -785,13 +785,14 @@ function getMesFaturaAtual(cartao_id){
   return mes;
 }
 
-function getPrevisaoLimite(cartao_id){
+function getPrevisaoLimite(cartao_id, usuario_id){
 
   const cartao = db.prepare(`
     SELECT limite
     FROM cartoes
     WHERE id = ?
-  `).get(cartao_id);
+      AND usuario_id = ?
+  `).get(cartao_id, usuario_id);
 
   const parcelas = db.prepare(`
     SELECT
@@ -843,6 +844,8 @@ module.exports = {
   gerarRecorrencias,
   getPrevisaoCartao,
   addCartao,
+  updateCartao,
+  deleteCartao,
   getCartoes,
   criarCompraCartao,
   getFaturaCartao,
@@ -853,7 +856,6 @@ module.exports = {
 
   getSaldoAtual,
   getLimiteCartao,
-  pagarFatura,
   getDashboard,
   setMetaCategoria,
   getMetasComGasto,
@@ -863,5 +865,6 @@ module.exports = {
   updateMovimentacao,
   getMesFaturaAtual,
   getPrevisaoLimite,
+  formatMes,
 
 };

@@ -26,6 +26,9 @@ const cartaoSelect = document.querySelector("#cartaoSelect");
 const parcelasInput = document.querySelector("#parcelasInput");
 const jurosInput = document.querySelector("#jurosInput");
 let chartMensal = null;
+let chartDiario = null;
+const chartAnimationOptions = false;
+
 
 function mesAtualYYYYMM() {
   const d = new Date();
@@ -38,9 +41,18 @@ if (filtroMes && !filtroMes.value) {
   filtroMes.value = mesAtualYYYYMM();
 }
 
+// Atualiza gráficos ao alterar o mês
+filtroMes?.addEventListener("change", async () => {
+  if (typeof refreshTudo === "function") {
+    await refreshTudo();
+  }
+});
+
 const areaCartao = document.querySelector("#areaCartao");
 
-const token = localStorage.getItem("token");
+const token =
+  localStorage.getItem("token") ||
+  sessionStorage.getItem("token");
 
 if (!token) {
   window.location.href = "/login.html";
@@ -123,6 +135,7 @@ async function carregarGraficoMensal() {
     },
     options: {
       responsive: true,
+      animation: chartAnimationOptions,
       plugins: {
         legend: { position: "top" }
       }
@@ -176,11 +189,6 @@ async function carregarDashboard(){
 }
 
 // MOSTRAR / ESCONDER AREA DE CARTÃO
-function toggleCartaoUI() {
-  if (!origemInput || !areaCartao) return;
-  areaCartao.classList.toggle("mostrar", origemInput.value === "cartao_credito");
-}
-
 // executa quando mudar o select
 if (origemInput) {
   origemInput?.addEventListener("change", toggleCartaoUI);
@@ -230,6 +238,7 @@ function money(v) {
 
 async function carregarCategorias() {
   const cats = await api("/api/categorias").then(r => r.json());
+console.log("CATEGORIAS:", cats);
 
   categoriaSelect.innerHTML = cats.map(c =>
     `<option value="${c.id}">${c.nome}</option>`
@@ -376,19 +385,17 @@ const body = {
 });
 
 (async function init() {
+
   if (filtroMes && !filtroMes.value) {
     filtroMes.value = mesAtualYYYYMM();
   }
 
   await carregarCategorias();
-  await carregarTransacoes();
-  await carregarResumo();
-  await carregarRelatorioCategorias();
-  await carregarGraficoCategorias();
-  await carregarPrevisao();
   await carregarCartoesNoForm();
   await carregarCategoriasMeta();
+
   await refreshTudo();
+
 })();
 // ====== RECORRÊNCIAS (visualização/teste) ======
 const formRec = document.querySelector("#formRec");
@@ -511,7 +518,16 @@ btnGerar?.addEventListener("click", async () => {
     method: "POST"
   }).then(r => r.json());
 
-  alert(`Criadas: ${resp.criadas}`);
+  if (typeof abrirModal === "function") {
+    await abrirModal({
+      titulo: "Recorrencias geradas",
+      texto: `Criadas: ${resp.criadas}`,
+      mostrarCancelar: false,
+      fecharAoClicarFora: true
+    });
+  } else {
+    alert(`Criadas: ${resp.criadas}`);
+  }
   await refreshTudo();
 });
 
@@ -569,6 +585,7 @@ async function carregarGraficoCategorias() {
     },
     options: {
       responsive: true,
+      animation: chartAnimationOptions,
       plugins: { legend: { position: "top" } },
       scales: {
         y: { beginAtZero: true }
@@ -627,7 +644,6 @@ async function carregarFatura() {
   await carregarPrevisaoCartao(cartaoId);
   
 }
-btnFat?.addEventListener("click", carregarFatura);
 
 async function carregarMetas(){
   const mes = filtroMes.value;
@@ -731,6 +747,7 @@ async function refreshTudo() {
   if (typeof carregarDashboard === "function") await carregarDashboard();
   if (typeof carregarControleCartao === "function") await carregarControleCartao();
   if (typeof carregarGraficoMensal === "function") await carregarGraficoMensal();
+  if (typeof carregarGraficoDiario === "function") await carregarGraficoDiario(filtroMes.value);
 }
 
 // ===== CARTÃO (visualização/teste) =====
@@ -739,6 +756,14 @@ const cNome = document.querySelector("#c_nome");
 const cLimite = document.querySelector("#c_limite");
 const cFech = document.querySelector("#c_fech");
 const cVenc = document.querySelector("#c_venc");
+const tituloModalCartao = document.querySelector("#tituloModalCartao");
+const btnSalvarCartao = document.querySelector("#btnSalvarCartao");
+const btnEditarCartao = document.querySelector("#btnEditarCartao");
+const btnExcluirCartao = document.querySelector("#btnExcluirCartao");
+const abrirModalCartaoBtn = document.querySelector("#abrirModalCartao");
+const modalCartao = document.querySelector("#modalCartao");
+let cartoesCache = [];
+let cartaoEditandoId = null;
 
 const formCompra = document.querySelector("#formCompra");
 const ccCartao = document.querySelector("#cc_cartao");
@@ -754,9 +779,47 @@ if (ccData) ccData.valueAsDate = new Date();
 
 async function carregarCartoes() {
   const cartoes = await api("/api/cartoes").then(r => r.json());
+  cartoesCache = cartoes;
+
+  const selecionadoFatura = fatCartao?.value || "";
+  const selecionadoForm = cartaoSelect?.value || "";
+
   const opts = cartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
-  if (ccCartao) ccCartao.innerHTML = opts;
-  if (fatCartao) fatCartao.innerHTML = opts;
+  if (ccCartao) {
+    ccCartao.innerHTML = opts;
+    if (selecionadoFatura && cartoes.some(c => String(c.id) === String(selecionadoFatura))) {
+      ccCartao.value = String(selecionadoFatura);
+    }
+  }
+  if (fatCartao) {
+    fatCartao.innerHTML = opts;
+    if (selecionadoFatura && cartoes.some(c => String(c.id) === String(selecionadoFatura))) {
+      fatCartao.value = String(selecionadoFatura);
+    }
+  }
+  if (cartaoSelect) {
+    if (selecionadoForm && cartoes.some(c => String(c.id) === String(selecionadoForm))) {
+      cartaoSelect.value = String(selecionadoForm);
+    }
+  }
+}
+
+function resetFormCartaoParaCriacao() {
+  cartaoEditandoId = null;
+  if (tituloModalCartao) tituloModalCartao.textContent = "Criar Cartão";
+  if (btnSalvarCartao) btnSalvarCartao.textContent = "Criar";
+  formCartao?.reset();
+}
+
+function preencherFormCartaoParaEdicao(cartao) {
+  cartaoEditandoId = Number(cartao.id);
+  if (tituloModalCartao) tituloModalCartao.textContent = "Editar Cartão";
+  if (btnSalvarCartao) btnSalvarCartao.textContent = "Salvar alterações";
+
+  cNome.value = cartao.nome ?? "";
+  cLimite.value = Number(cartao.limite ?? 0);
+  cFech.value = Number(cartao.dia_fechamento ?? 1);
+  cVenc.value = Number(cartao.dia_vencimento ?? 1);
 }
 
 function setMesAtualFatura(){
@@ -772,19 +835,101 @@ async function carregarCategoriasCartao() {
 
 formCartao?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  await api("/api/cartoes", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      nome: cNome.value,
-      limite: Number(cLimite.value || 0),
-      dia_fechamento: Number(cFech.value),
-      dia_vencimento: Number(cVenc.value)
-    })
-  });
-  formCartao.reset();
+
+  const payload = {
+    nome: cNome.value,
+    limite: Number(cLimite.value || 0),
+    dia_fechamento: Number(cFech.value),
+    dia_vencimento: Number(cVenc.value)
+  };
+
+  if (cartaoEditandoId) {
+    await api(`/api/cartoes/${cartaoEditandoId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } else {
+    await api("/api/cartoes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  }
+
+  resetFormCartaoParaCriacao();
+  if (modalCartao) modalCartao.style.display = "none";
+
   await carregarCartoes();
   await carregarCartoesNoForm();
+  await carregarControleCartao();
+  await carregarFatura();
+});
+
+abrirModalCartaoBtn?.addEventListener("click", () => {
+  resetFormCartaoParaCriacao();
+});
+
+btnEditarCartao?.addEventListener("click", async () => {
+  const cartaoId = Number(fatCartao?.value);
+  if (!cartaoId) {
+    await abrirModal({
+      titulo: "Aviso",
+      texto: "Selecione um cartao para editar.",
+      mostrarCancelar: false
+    });
+    return;
+  }
+
+  const cartao = cartoesCache.find(c => Number(c.id) === cartaoId);
+  if (!cartao) {
+    await abrirModal({
+      titulo: "Erro",
+      texto: "Cartao nao encontrado.",
+      mostrarCancelar: false
+    });
+    return;
+  }
+
+  preencherFormCartaoParaEdicao(cartao);
+  if (modalCartao) modalCartao.style.display = "flex";
+});
+
+btnExcluirCartao?.addEventListener("click", async () => {
+  const cartaoId = Number(fatCartao?.value);
+  if (!cartaoId) {
+    await abrirModal({
+      titulo: "Aviso",
+      texto: "Selecione um cartao para excluir.",
+      mostrarCancelar: false
+    });
+    return;
+  }
+
+  const ok = await abrirModal({
+    titulo: "Confirmar exclusao",
+    texto: "Tem certeza que deseja excluir este cartao?",
+    mostrarCancelar: true,
+    confirmarTexto: "Excluir"
+  });
+
+  if (!ok) return;
+
+  await api(`/api/cartoes/${cartaoId}`, {
+    method: "DELETE"
+  });
+
+  await abrirModal({
+    titulo: "Sucesso",
+    texto: "Cartao excluido com sucesso.",
+    mostrarCancelar: false,
+    fecharAoClicarFora: true
+  });
+
+  await carregarCartoes();
+  await carregarCartoesNoForm();
+  await carregarControleCartao();
+  await carregarFatura();
 });
 
 formCompra?.addEventListener("submit", async (e) => {
@@ -831,18 +976,6 @@ btnFat?.addEventListener("click", async () => {
 `).join("");
 });
 
-document?.addEventListener("DOMContentLoaded", () => {
-
-  if (typeof setMesAtualFatura === "function") {
-    setMesAtualFatura();
-  }
-
-  if (typeof refreshTudo === "function") {
-    refreshTudo();
-  }
-
-});
-
 (async function initCartao() {
   if (!formCartao && !formCompra) return;
   await carregarCategoriasCartao();
@@ -850,53 +983,41 @@ document?.addEventListener("DOMContentLoaded", () => {
   await carregarFatura();
 })();
 
-const modalCartao = document.getElementById("modalCartao");
-const abrirModalCartao = document.getElementById("abrirModalCartao");
-const fecharModalCartao = document.getElementById("fecharModalCartao");
+// Função utilitária para abrir/fechar modais de forma segura
+function setupModal(modalId, openBtnId, closeBtnId) {
+  const modal = document.getElementById(modalId);
+  const openBtn = document.getElementById(openBtnId);
+  const closeBtn = document.getElementById(closeBtnId);
+  if (!modal) return;
 
-abrirModalCartao?.addEventListener("click", () => {
-  modalCartao.style.display = "flex";
-});
-
-fecharModalCartao?.addEventListener("click", () => {
-  modalCartao.style.display = "none";
-});
-
-window.addEventListener("click", (e) => {
-  if (e.target === modalCartao) {
-    modalCartao.style.display = "none";
+  if (openBtn) {
+    openBtn.addEventListener("click", () => {
+      modal.style.display = "flex";
+    });
   }
-});
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    modalCartao.style.display = "none";
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      modal.style.display = "none";
+    });
   }
-});
+  window.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      modal.style.display = "none";
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      modal.style.display = "none";
+    }
+  });
+}
 
-const modalRec = document.getElementById("modalRec");
-const abrirModalRec = document.getElementById("abrirModalRec");
-const fecharModalRec = document.getElementById("fecharModalRec");
-
-abrirModalRec?.addEventListener("click", () => {
-  modalRec.style.display = "flex";
-});
-
-fecharModalRec?.addEventListener("click", () => {
-  modalRec.style.display = "none";
-});
-
-window.addEventListener("click", (e) => {
-  if (e.target === modalRec) {
-    modalRec.style.display = "none";
-  }
-});
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    modalRec.style.display = "none";
-  }
-});
+// Setup para todos os modais principais
+setupModal("modalCartao", "abrirModalCartao", "fecharModalCartao");
+setupModal("modalRec", "abrirModalRec", "fecharModalRec");
+setupModal("modalParcelas", null, "fecharParcelas");
+setupModal("modalCategoria", "btnNovaCategoria", "cancelarCategoria");
+// Modal padrão já tem lógica própria, não precisa duplicar
 const btnPDF = document.getElementById("btnPDF");
 
 btnPDF?.addEventListener("click", () => {
@@ -910,25 +1031,82 @@ btnPDF?.addEventListener("click", () => {
   window.open(`/api/relatorio-pdf?mes=${mes}&token=${token}`, "_blank");
 });
 
-const btnPagarFatura = document.querySelector("#btnPagarFatura");
 
-btnPagarFatura?.addEventListener("click", async () => {
+function bindPagarFatura() {
+  const btnPagarFatura = document.querySelector("#btnPagarFatura");
+  if (!btnPagarFatura) {
+    console.warn("[PagarFatura] Botao nao encontrado");
+    return;
+  }
 
-  const cartaoId = fatCartao.value;
-  const mes = fatMes.value;
+  btnPagarFatura.addEventListener("click", async () => {
+    console.log("[PagarFatura] CLICOU");
+    console.log("[PagarFatura] fatCartao/fatMes:", fatCartao, fatMes);
+    console.log("[PagarFatura] api type:", typeof api);
 
-  if(!confirm("Confirmar pagamento da fatura?")) return;
+    const cartaoId = fatCartao?.value;
+    const mes = fatMes?.value;
 
-  await api(`/api/cartoes/${cartaoId}/pagar`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mes })
+    if (!cartaoId || !mes) {
+      await abrirModal({
+        titulo: "Erro",
+        texto: "Selecione um cartao e um mes para pagar a fatura."
+      });
+      return;
+    }
+
+    const faturaResp = await api(`/api/cartoes/${cartaoId}/fatura?mes=${encodeURIComponent(mes)}`);
+    if (!faturaResp.ok) {
+      await abrirModal({
+        titulo: "Erro",
+        texto: "Erro ao buscar fatura"
+      });
+      return;
+    }
+
+    const fatura = await faturaResp.json();
+    if (fatura.total === 0) {
+      await abrirModal({
+        titulo: "Aviso",
+        texto: "Essa fatura já está paga ou não possui parcelas abertas"
+      });
+      return;
+    }
+
+    const ok = await abrirModal({
+      titulo: "Confirmar",
+      texto: "Confirmar pagamento da fatura?"
+    });
+    if (!ok) return;
+
+    try {
+      const resp = await api(`/api/cartoes/${cartaoId}/pagar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mes })
+      });
+
+      await abrirModal({
+        titulo: "Sucesso",
+        texto: "Fatura paga!",
+        mostrarCancelar: false,
+        fecharAoClicarFora: true
+      });
+      await refreshTudo();
+    } catch (err) {
+      await abrirModal({
+        titulo: "Erro",
+        texto: "Erro ao pagar fatura: " + (err.message || err)
+      });
+    }
   });
+}
 
-  alert("Fatura paga!");
-
-  await refreshTudo();
-});
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bindPagarFatura);
+} else {
+  bindPagarFatura();
+}
 
 
 
@@ -1031,7 +1209,230 @@ async function carregarPrevisaoCartao(cartaoId){
 
 }
 
+document.addEventListener("DOMContentLoaded", () => {
+
+  const modal = document.querySelector("#modalPadrao");
+  const modalTitulo = document.querySelector("#modalTitulo");
+  const modalTexto = document.querySelector("#modalTexto");
+  const modalInput = document.querySelector("#modalInput");
+  const modalOk = document.querySelector("#modalOk");
+  const modalCancelar = document.querySelector("#modalCancelar");
+
+  window.abrirModal = function({
+    titulo,
+    texto,
+    input = false,
+    mostrarCancelar = true,
+    fecharAoClicarFora = true,
+    confirmarTexto = "OK"
+  }){
+
+    modalTitulo.innerText = titulo;
+    modalTexto.innerText = texto;
+
+    modalInput.style.display = input ? "block" : "none";
+    modalInput.value = "";
+    modalCancelar.style.display = mostrarCancelar ? "inline-block" : "none";
+    modalOk.textContent = confirmarTexto;
+
+    modal.style.display = "flex";
+
+    return new Promise(resolve => {
+
+      const fecharModal = (resultado) => {
+        modal.style.display = "none";
+        modal.removeEventListener("click", onBackdropClick);
+        document.removeEventListener("keydown", onEsc);
+        resolve(resultado);
+      };
+
+      const onBackdropClick = (e) => {
+        if (fecharAoClicarFora && e.target === modal) {
+          fecharModal(false);
+        }
+      };
+
+      const onEsc = (e) => {
+        if (e.key === "Escape") {
+          fecharModal(false);
+        }
+      };
+
+      modal.addEventListener("click", onBackdropClick);
+      document.addEventListener("keydown", onEsc);
+
+      modalOk.onclick = () => {
+        fecharModal(input ? modalInput.value : true);
+      };
+
+      modalCancelar.onclick = () => {
+        fecharModal(false);
+      };
+
+    });
+
+  };
+
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  const btnNovaCategoria = document.querySelector("#btnNovaCategoria");
+  const modalCategoria = document.querySelector("#modalCategoria");
+  const salvarCategoria = document.querySelector("#salvarCategoria");
+  const cancelarCategoria = document.querySelector("#cancelarCategoria");
+  const inputCategoria = document.querySelector("#inputCategoria");
+
+  async function atualizarListasDeCategorias() {
+    if (typeof carregarCategorias === "function") await carregarCategorias();
+    if (typeof carregarCategoriasMeta === "function") await carregarCategoriasMeta();
+    if (typeof carregarCategoriasRec === "function") await carregarCategoriasRec();
+    if (typeof carregarCategoriasCartao === "function") await carregarCategoriasCartao();
+  }
+
+  btnNovaCategoria?.addEventListener("click", () => {
+    modalCategoria.style.display = "flex";
+    inputCategoria.value = "";
+    inputCategoria.focus();
+  });
+
+  cancelarCategoria?.addEventListener("click", () => {
+    modalCategoria.style.display = "none";
+  });
+
+  salvarCategoria?.addEventListener("click", async () => {
+
+    const nome = inputCategoria.value.trim();
+    if(!nome) return;
+
+    await api("/api/categorias",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ nome })
+    });
+
+    modalCategoria.style.display = "none";
+
+    await atualizarListasDeCategorias();
+    await refreshTudo();
+  });
+
+});
+
+window.addEventListener("click", (e)=>{
+  const modalCategoria = document.querySelector("#modalCategoria");
+  if(e.target === modalCategoria){
+    modalCategoria.style.display="none";
+  }
+});
+
 function logout() {
   localStorage.removeItem("token");
+  sessionStorage.removeItem("token");
   window.location.href = "/login.html";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const tabs = document.querySelectorAll(".tab");
+  const tabContents = document.querySelectorAll(".tab-content");
+
+  if (!tabs.length || !tabContents.length) return;
+
+  async function reanimarGraficosAoAbrirAba() {
+    if (chartCats) {
+      chartCats.destroy();
+      chartCats = null;
+    }
+    if (chartMensal) {
+      chartMensal.destroy();
+      chartMensal = null;
+    }
+    if (chartDiario) {
+      chartDiario.destroy();
+      chartDiario = null;
+    }
+
+    // Espera o repaint da aba ativa para garantir que os canvases estejam visiveis.
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await new Promise((resolve) => setTimeout(resolve, 40));
+
+    if (typeof carregarGraficoCategorias === "function") {
+      await carregarGraficoCategorias();
+    }
+    if (typeof carregarGraficoMensal === "function") {
+      await carregarGraficoMensal();
+    }
+    if (typeof carregarGraficoDiario === "function") {
+      await carregarGraficoDiario(filtroMes.value);
+    }
+  }
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", async () => {
+      tabs.forEach((t) => t.classList.remove("active"));
+      tabContents.forEach((c) => c.classList.remove("active"));
+      const target = document.getElementById(tab.dataset.tab);
+      if (!target) return;
+
+      // Separa a ativacao em outro frame para garantir a animacao de entrada.
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
+      tab.classList.add("active");
+      target.classList.add("active");
+
+      if (tab.dataset.tab === "graficos") {
+        await reanimarGraficosAoAbrirAba();
+      }
+    });
+  });
+});
+
+async function carregarGraficoDiario(mes) {
+  const resp = await api(`/api/diario?mes=${mes}`);
+  const dados = await resp.json();
+
+  const labels = dados.map(d => d.dia);
+
+  const entradas = dados.map(d => d.entradas);
+  const saidas = dados.map(d => d.saidas);
+
+  if (chartDiario) chartDiario.destroy();
+
+  chartDiario = new Chart(document.getElementById("graficoDiario"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Entradas",
+          data: entradas,
+          borderColor: "#22c55e",
+          backgroundColor: "#22c55e33",
+          tension: 0.3
+        },
+        {
+          label: "Saídas",
+          data: saidas,
+          borderColor: "#ef4444",
+          backgroundColor: "#ef444433",
+          tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      animation: chartAnimationOptions,
+      plugins: {
+        legend: { labels: { color: "#fff" } }
+      },
+      scales: {
+        x: {
+          ticks: { color: "#aaa" }
+        },
+        y: {
+          ticks: { color: "#aaa" }
+        }
+      }
+    }
+  });
 }

@@ -13,7 +13,9 @@ CREATE TABLE IF NOT EXISTS usuarios (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nome TEXT,
   email TEXT UNIQUE,
-  senha TEXT
+  senha TEXT,
+  reset_token_hash TEXT,
+  reset_expires_at INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS categorias (
@@ -114,5 +116,19 @@ if (qtd === 0) {
 }
 
 console.log("Banco criado com sucesso.");
+
+// Migração leve para bases antigas
+const userColumns = db.prepare("PRAGMA table_info(usuarios)").all();
+const temResetToken = userColumns.some(c => c.name === "reset_token_hash");
+const temResetExpires = userColumns.some(c => c.name === "reset_expires_at");
+
+if (!temResetToken) {
+  db.exec("ALTER TABLE usuarios ADD COLUMN reset_token_hash TEXT");
+}
+if (!temResetExpires) {
+  db.exec("ALTER TABLE usuarios ADD COLUMN reset_expires_at INTEGER");
+}
+
+db.exec("CREATE INDEX IF NOT EXISTS idx_usuarios_reset_token_hash ON usuarios(reset_token_hash)");
 
 db.close();
