@@ -1,4 +1,4 @@
-const lista = document.querySelector("#lista");
+﻿const lista = document.querySelector("#lista");
 const form = document.querySelector("#form");
 const resumoDiv = document.querySelector("#resumo");
 const metaCategoria = document.querySelector("#meta_categoria");
@@ -11,10 +11,23 @@ const fatTotal = document.querySelector("#fat_total");
 const fatItens = document.querySelector("#fat_itens");
 const metasBody = document.querySelector("#metasBody");
 const categoriaSelect = document.querySelector("#categoria");
+const formCaixinha = document.querySelector("#formCaixinha");
+const listaCaixinhas = document.querySelector("#listaCaixinhas");
+const caixinhaIdInput = document.querySelector("#caixinhaId");
+const caixinhaNomeInput = document.querySelector("#caixinhaNome");
+const caixinhaObjetivoInput = document.querySelector("#caixinhaObjetivo");
+const caixinhaRendimentoTipoInput = document.querySelector("#caixinhaRendimentoTipo");
+const caixinhaRendimentoPercentualInput = document.querySelector("#caixinhaRendimentoPercentual");
+const caixinhaInstituicaoInput = document.querySelector("#caixinhaInstituicao");
+const caixinhaProdutoInput = document.querySelector("#caixinhaProduto");
+const caixinhaAutoPercentualInput = document.querySelector("#caixinhaAutoPercentual");
+const btnSyncRendimento = document.querySelector("#btnSyncRendimento");
 
 const filtroMes = document.querySelector("#filtroMes");
 
 const chartMensalCanvas = document.querySelector("#chartMensal");
+const chartCaixinhasCanvas = document.querySelector("#chartCaixinhas");
+const caixinhaPeriodoSelect = document.querySelector("#caixinhaPeriodo");
 const idInput = document.querySelector("#id");
 const descricaoInput = document.querySelector("#descricao");
 const valorInput = document.querySelector("#valor");
@@ -27,199 +40,320 @@ const parcelasInput = document.querySelector("#parcelasInput");
 const jurosInput = document.querySelector("#jurosInput");
 let chartMensal = null;
 let chartDiario = null;
+let chartCaixinhas = null;
 const chartAnimationOptions = false;
 
 
 function mesAtualYYYYMM() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}`;
 }
 
 if (filtroMes && !filtroMes.value) {
-  filtroMes.value = mesAtualYYYYMM();
+    filtroMes.value = mesAtualYYYYMM();
 }
 
-// Atualiza gráficos ao alterar o mês
+// Atualiza grÃ¡ficos ao alterar o mÃªs
 filtroMes?.addEventListener("change", async () => {
-  if (typeof refreshTudo === "function") {
-    await refreshTudo();
-  }
+    if (typeof refreshTudo === "function") {
+        await refreshTudo();
+    }
 });
 
 const areaCartao = document.querySelector("#areaCartao");
 
 const token =
-  localStorage.getItem("token") ||
-  sessionStorage.getItem("token");
+    localStorage.getItem("token") ||
+    sessionStorage.getItem("token");
 
 if (!token) {
-  window.location.href = "/login.html";
+    window.location.href = "/login.html";
 }
 
 async function api(url, options = {}) {
 
-  const headers = {
-    ...(options.headers || {}),
-    "Authorization": "Bearer " + token
-  };
+    const headers = {
+        ...(options.headers || {}),
+        "Authorization": "Bearer " + token
+    };
 
-  const response = await fetch(url, {
-    ...options,
-    headers
-  });
+    const response = await fetch(url, {
+        ...options,
+        headers
+    });
 
- if (!response.ok) {
-  const text = await response.text();
-  console.error("Erro API:", text);
-  throw new Error(text);
-}
+    if (!response.ok) {
+        const text = await response.text();
+        console.error("Erro API:", text);
+        throw new Error(text);
+    }
 
-  return response;
+    return response;
 }
 
 function ajustarTipoCartao() {
 
-  if (!origemInput || !tipoInput) return;
+    if (!origemInput || !tipoInput) return;
 
-  if (origemInput.value === "cartao_credito") {
-    tipoInput.value = "saida";
-    tipoInput.disabled = true;
-  } else {
-    tipoInput.disabled = false;
-  }
+    if (origemInput.value === "cartao_credito") {
+        tipoInput.value = "saida";
+        tipoInput.disabled = true;
+    } else {
+        tipoInput.disabled = false;
+    }
 }
 
 async function carregarGraficoMensal() {
-  if (!chartMensalCanvas) return;
+    if (!chartMensalCanvas) return;
 
-  const ano = new Date().getFullYear();
+    const ano = new Date().getFullYear();
 
-  const dados = await api(`/api/mensal?ano=${ano}`).then(r => r.json());
+    const dados = await api(`/api/mensal?ano=${ano}`).then(r => r.json());
 
-  const labels = dados.map(x => x.mes);
-  const entradas = dados.map(x => Number(x.entradas || 0));
-  const saidas = dados.map(x => Number(x.saidas || 0));
-  const saldo = entradas.map((v, i) => v - saidas[i]);
+    const labels = dados.map(x => x.mes);
+    const entradas = dados.map(x => Number(x.entradas || 0));
+    const saidas = dados.map(x => Number(x.saidas || 0));
+    const saldo = entradas.map((v, i) => v - saidas[i]);
 
-  if (chartMensal) chartMensal.destroy();
+    if (chartMensal) chartMensal.destroy();
 
-  chartMensal = new Chart(chartMensalCanvas, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Entradas",
-          data: entradas,
-          borderColor: "#22c55e",
-          backgroundColor: "rgba(34,197,94,0.2)",
-          tension: 0.3
+    chartMensal = new Chart(chartMensalCanvas, {
+        type: "line",
+        data: {
+            labels,
+            datasets: [{
+                    label: "Entradas",
+                    data: entradas,
+                    borderColor: "#22c55e",
+                    backgroundColor: "rgba(34,197,94,0.2)",
+                    tension: 0.3
+                },
+                {
+                    label: "SaÃ­das",
+                    data: saidas,
+                    borderColor: "#ef4444",
+                    backgroundColor: "rgba(239,68,68,0.2)",
+                    tension: 0.3
+                },
+                {
+                    label: "Saldo",
+                    data: saldo,
+                    borderColor: "#00e5ff",
+                    backgroundColor: "rgba(0,229,255,0.2)",
+                    tension: 0.3
+                }
+            ]
         },
-        {
-          label: "Saídas",
-          data: saidas,
-          borderColor: "#ef4444",
-          backgroundColor: "rgba(239,68,68,0.2)",
-          tension: 0.3
-        },
-        {
-          label: "Saldo",
-          data: saldo,
-          borderColor: "#00e5ff",
-          backgroundColor: "rgba(0,229,255,0.2)",
-          tension: 0.3
+        options: {
+            responsive: true,
+            animation: chartAnimationOptions,
+            plugins: {
+                legend: { position: "top" }
+            }
         }
-      ]
-    },
-    options: {
-      responsive: true,
-      animation: chartAnimationOptions,
-      plugins: {
-        legend: { position: "top" }
-      }
-    }
-  });
+    });
 }
+
+function corLinhaPorIndice(i) {
+    const hue = (i * 67) % 360;
+    return {
+        borda: `hsl(${hue}, 88%, 62%)`,
+        fundo: `hsla(${hue}, 88%, 62%, 0.16)`
+    };
+}
+
+async function carregarGraficoCaixinhas() {
+    if (!chartCaixinhasCanvas) return;
+
+    const periodo = caixinhaPeriodoSelect?.value || "mensal";
+    const dadosResp = await api(`/api/caixinhas/evolucao?periodo=${encodeURIComponent(periodo)}`).then(r => r.json());
+    let dados = Array.isArray(dadosResp) ? dadosResp : [];
+
+    // Fallback: se nao houver historico agregado, usa snapshot atual das caixinhas.
+    if (!dados.length) {
+        const caixinhas = await api("/api/caixinhas").then(r => r.json());
+        const rotuloAtual = "Atual";
+
+        dados = (Array.isArray(caixinhas) ? caixinhas : []).map((c) => ({
+            caixinha_id: c.id,
+            caixinha_nome: c.nome,
+            periodo: rotuloAtual,
+            saldo_acumulado: Number(c.saldo_atualizado ?? c.saldo ?? 0)
+        }));
+    }
+
+    if (chartCaixinhas) chartCaixinhas.destroy();
+
+    const dadosOrdenados = [...dados].sort((a, b) => {
+        const ia = Number.isFinite(Number(a.bucket_idx)) ? Number(a.bucket_idx) : 999;
+        const ib = Number.isFinite(Number(b.bucket_idx)) ? Number(b.bucket_idx) : 999;
+        if (ia !== ib) return ia - ib;
+        return String(a.periodo).localeCompare(String(b.periodo));
+    });
+
+    const labels = [...new Set(dadosOrdenados.map(d => d.periodo))];
+    const porCaixinha = new Map();
+
+    for (const item of dadosOrdenados) {
+        const id = Number(item.caixinha_id);
+        const nome = item.caixinha_nome || `Caixinha ${id}`;
+
+        if (!porCaixinha.has(id)) {
+            porCaixinha.set(id, { id, nome, mapa: new Map() });
+        }
+
+        porCaixinha.get(id).mapa.set(item.periodo, Number(item.saldo_acumulado || 0));
+    }
+
+    const datasets = [...porCaixinha.values()].map((cx, index) => {
+        const cor = corLinhaPorIndice(index);
+        let saldoAtual = 0;
+
+        const serie = labels.map((lbl) => {
+            if (cx.mapa.has(lbl)) {
+                saldoAtual = Number(cx.mapa.get(lbl) || 0);
+            }
+            return Number(saldoAtual.toFixed(2));
+        });
+
+        return {
+            label: cx.nome,
+            data: serie,
+            borderColor: cor.borda,
+            backgroundColor: cor.fundo,
+            borderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 4,
+            tension: 0.25
+        };
+    });
+
+    if (!datasets.length) {
+        if (chartCaixinhas) {
+            chartCaixinhas.destroy();
+            chartCaixinhas = null;
+        }
+        return;
+    }
+
+    chartCaixinhas = new Chart(chartCaixinhasCanvas, {
+        type: "line",
+        data: {
+            labels,
+            datasets
+        },
+        options: {
+            responsive: true,
+            animation: chartAnimationOptions,
+            interaction: {
+                mode: "nearest",
+                axis: "x",
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    position: "top",
+                    labels: { color: "#fff" }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: "#aaa" }
+                },
+                y: {
+                    ticks: {
+                        color: "#aaa",
+                        callback: (v) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                    }
+                }
+            }
+        }
+    });
+}
+
+caixinhaPeriodoSelect?.addEventListener("change", async () => {
+    await carregarGraficoCaixinhas();
+});
 
 origemInput?.addEventListener("change", ajustarTipoCartao);
 ajustarTipoCartao();
 
 function toggleCartaoUI() {
-  if (!origemInput || !areaCartao) return;
+    if (!origemInput || !areaCartao) return;
 
-  if (origemInput.value === "cartao_credito") {
-    areaCartao.classList.add("mostrar");
-  } else {
-    areaCartao.classList.remove("mostrar");
-  }
+    if (origemInput.value === "cartao_credito") {
+        areaCartao.classList.add("mostrar");
+    } else {
+        areaCartao.classList.remove("mostrar");
+    }
 }
 origemInput?.addEventListener("change", toggleCartaoUI);
 toggleCartaoUI();
 
 if (dataInput) {
-  dataInput.valueAsDate = new Date();
+    dataInput.valueAsDate = new Date();
 }
 
 async function carregarCartoesNoForm() {
-  if (!cartaoSelect) return;
+    if (!cartaoSelect) return;
 
- const cartoes = await api("/api/cartoes").then(r => r.json());
+    const cartoes = await api("/api/cartoes").then(r => r.json());
 
-  cartaoSelect.innerHTML =
-    `<option value="">Selecione o cartão</option>` +
-    cartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
+    cartaoSelect.innerHTML =
+        `<option value="">Selecione o cartÃ£o</option>` +
+        cartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
 }
 
 const dashboardDiv = document.querySelector("#dashboard");
 
-async function carregarDashboard(){
+async function carregarDashboard() {
 
-  const mes = filtroMes.value;
+    const mes = filtroMes.value;
 
-  const d = await api(`/api/dashboard?mes=${mes}`).then(r=>r.json());
+    const d = await api(`/api/dashboard?mes=${mes}`).then(r => r.json());
 
-  dashboardDiv.innerHTML = `
+    dashboardDiv.innerHTML = `
     <p><b>Saldo atual:</b> ${money(d.saldo)}</p>
-    <p><b>Entradas do mês:</b> ${money(d.entradas)}</p>
-    <p><b>Saídas do mês:</b> ${money(d.saidas)}</p>
-    <p><b>Fatura do cartão:</b> ${money(d.fatura)}</p>
+    <p><b>Entradas do mÃªs:</b> ${money(d.entradas)}</p>
+    <p><b>SaÃ­das do mÃªs:</b> ${money(d.saidas)}</p>
+    <p><b>Fatura do cartÃ£o:</b> ${money(d.fatura)}</p>
   `;
 }
 
-// MOSTRAR / ESCONDER AREA DE CARTÃO
+// MOSTRAR / ESCONDER AREA DE CARTÃƒO
 // executa quando mudar o select
 if (origemInput) {
-  origemInput?.addEventListener("change", toggleCartaoUI);
+    origemInput?.addEventListener("change", toggleCartaoUI);
 }
 
-// executa quando abrir a página
+// executa quando abrir a pÃ¡gina
 toggleCartaoUI();
 origemInput?.addEventListener("change", toggleCartaoUI);
-toggleCartaoUI(); // já aplica ao abrir a página
+toggleCartaoUI(); // jÃ¡ aplica ao abrir a pÃ¡gina
 
 if (dataInput) {
-  dataInput.valueAsDate = new Date();
+    dataInput.valueAsDate = new Date();
 }
 
 async function carregarRelatorioCategorias() {
-  if (!metasBody) return;
+    if (!metasBody) return;
 
-  const mes = (filtroMes && filtroMes.value) ? filtroMes.value : null;
-  if (!mes) { metasBody.innerHTML = ""; return; }
+    const mes = (filtroMes && filtroMes.value) ? filtroMes.value : null;
+    if (!mes) { metasBody.innerHTML = ""; return; }
 
-  const dados = await api(`/api/relatorio-categorias?mes=${encodeURIComponent(mes)}`).then(r => r.json());
+    const dados = await api(`/api/relatorio-categorias?mes=${encodeURIComponent(mes)}`).then(r => r.json());
 
-  metasBody.innerHTML = dados.map(x => {
+    metasBody.innerHTML = dados.map(x => {
 
-    const perc = x.meta > 0
-      ? ((x.total_saidas / x.meta) * 100).toFixed(0)
-      : 0;
+        const perc = x.meta > 0 ?
+            ((x.total_saidas / x.meta) * 100).toFixed(0) :
+            0;
 
-    const alerta = perc >= 100 ? "⚠" : "";
+        const alerta = perc >= 100 ? "âš " : "";
 
-    return `
+        return `
       <tr>
         <td>${x.categoria}</td>
         <td>${money(x.total_saidas)}</td>
@@ -229,11 +363,147 @@ async function carregarRelatorioCategorias() {
       </tr>
     `;
 
-  }).join("");
+    }).join("");
 }
 
 function money(v) {
-  return Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    return Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+async function modalUI(options) {
+    if (typeof abrirModal === "function") {
+        return abrirModal(options);
+    }
+
+    // Evita usar alert/confirm/prompt nativo mesmo se o modal ainda nao estiver pronto.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    if (typeof abrirModal === "function") {
+        return abrirModal(options);
+    }
+
+    console.warn("Modal padrao ainda nao foi inicializado.");
+    return options.input ? false : !options.mostrarCancelar;
+}
+
+async function modalConfirmar(titulo, texto, confirmarTexto = "OK") {
+    const r = await modalUI({
+        titulo,
+        texto,
+        mostrarCancelar: true,
+        confirmarTexto
+    });
+    return !!r;
+}
+
+async function modalAviso(titulo, texto) {
+    await modalUI({
+        titulo,
+        texto,
+        mostrarCancelar: false,
+        fecharAoClicarFora: true
+    });
+}
+
+async function modalInput(titulo, texto, confirmarTexto = "Confirmar") {
+    const r = await modalUI({
+        titulo,
+        texto,
+        input: true,
+        confirmarTexto
+    });
+
+    if (r === false) return null;
+    return r;
+}
+
+function getCaixinhaIcone(nome = "") {
+    const n = String(nome).toLowerCase();
+    if (n.includes("viagem") || n.includes("ferias")) return "âœˆ";
+    if (n.includes("carro") || n.includes("moto")) return "ðŸš—";
+    if (n.includes("casa") || n.includes("apart")) return "ðŸ ";
+    if (n.includes("estudo") || n.includes("curso")) return "ðŸ“š";
+    if (n.includes("emerg") || n.includes("reserva")) return "ðŸ›Ÿ";
+    return "ðŸ’°";
+}
+
+function getClasseProgresso(perc) {
+    if (perc >= 100) return "alta";
+    if (perc >= 60) return "media";
+    return "baixa";
+}
+
+function resetFormCaixinha() {
+    if (!formCaixinha) return;
+
+    formCaixinha.reset();
+    if (caixinhaIdInput) caixinhaIdInput.value = "";
+    if (caixinhaRendimentoTipoInput && !caixinhaRendimentoTipoInput.value) {
+        caixinhaRendimentoTipoInput.value = "CDI";
+    }
+    if (caixinhaRendimentoPercentualInput && !caixinhaRendimentoPercentualInput.value) {
+        caixinhaRendimentoPercentualInput.value = "100";
+    }
+    if (caixinhaProdutoInput && !caixinhaProdutoInput.value) {
+        caixinhaProdutoInput.value = "Conta";
+    }
+    if (caixinhaAutoPercentualInput) {
+        caixinhaAutoPercentualInput.checked = false;
+    }
+}
+
+async function carregarCaixinhas() {
+    if (!listaCaixinhas) return;
+
+    const caixinhas = await api("/api/caixinhas").then(r => r.json());
+
+    if (!Array.isArray(caixinhas) || !caixinhas.length) {
+        listaCaixinhas.innerHTML = `
+      <div class="caixinha-empty">
+        Nenhuma caixinha criada ainda. Crie a primeira para separar seus objetivos.
+      </div>
+    `;
+        return;
+    }
+
+    listaCaixinhas.innerHTML = caixinhas.map(c => {
+                const saldo = Number(c.saldo || 0);
+                const saldoAtualizado = Number(c.saldo_atualizado || saldo);
+                const rendimento = Number(c.rendimento_estimado || 0);
+                const objetivo = Number(c.objetivo || 0);
+                const progresso = objetivo > 0 ? Math.min(100, (saldoAtualizado / objetivo) * 100) : 0;
+                const classeProgresso = getClasseProgresso(progresso);
+                const icone = getCaixinhaIcone(c.nome);
+
+                return `
+      <article class="caixinha-card">
+        <div class="caixinha-topo">
+          <h3><span class="caixinha-icone">${icone}</span> ${c.nome}</h3>
+          <span class="caixinha-tag">${c.rendimento_tipo || "Sem Ã­ndice"}</span>
+        </div>
+
+        <p><b>Saldo:</b> ${money(saldoAtualizado)}</p>
+        <p><b>Base:</b> ${money(saldo)}</p>
+        <p><b>Rendimento simulado:</b> ${money(rendimento)} em ${Number(c.dias_rendimento || 0)} dias</p>
+        <p><b>Taxa aplicada:</b> ${Number(c.percentual_aplicado || 0).toFixed(2)}% do ${c.rendimento_tipo || "Ã­ndice"} (${c.percentual_origem === "automatico" ? "auto" : "manual"})</p>
+        <p><b>InstituiÃ§Ã£o:</b> ${c.instituicao || "-"} ${c.produto ? `(${c.produto})` : ""}</p>
+        <p><b>Meta:</b> ${objetivo > 0 ? money(objetivo) : "NÃ£o definida"}</p>
+
+        ${objetivo > 0 ? `
+          <div class="caixinha-progresso ${classeProgresso}">
+            <div class="caixinha-progresso-barra" style="width:${progresso.toFixed(1)}%"></div>
+          </div>
+          <small>${progresso.toFixed(0)}% da meta</small>
+        ` : ""}
+
+        <div class="caixinha-acoes">
+          <button data-cx-action="deposito" data-id="${c.id}">Depositar</button>
+          <button data-cx-action="saque" data-id="${c.id}">Sacar</button>
+          <button data-cx-action="editar" data-id="${c.id}">Editar</button>
+          <button data-cx-action="excluir" data-id="${c.id}">Excluir</button>
+        </div>
+      </article>
+    `;
+  }).join("");
 }
 
 async function carregarCategorias() {
@@ -257,22 +527,24 @@ async function carregarTransacoes() {
 
   lista.innerHTML = trans.map(t => `
     <tr>
-      <td>${t.data}</td>
-      <td>
+      <td class="col-data">${t.data}</td>
+      <td class="col-descricao">
       ${t.parcela_num ? `${t.descricao} (${t.parcela_num}/${t.parcela_total})` : t  .descricao}
       </td>
-      <td>${t.categoria ?? "-"}</td>
-      <td>${t.tipo}</td>
-      <td>${money(t.valor)}</td>
-      <td>
-        <button data-action="edit" data-id="${t.id}">Editar</button>
-        <button data-action="del" data-id="${t.id}">Excluir</button>
+      <td class="col-categoria">${t.categoria ?? "-"}</td>
+      <td class="col-tipo">${t.tipo}</td>
+      <td class="col-valor">${money(t.valor)}</td>
+      <td class="col-acoes">
+        <div class="acoes-inline">
+          <button data-action="edit" data-id="${t.id}">Editar</button>
+          <button data-action="del" data-id="${t.id}">Excluir</button>
+        </div>
       </td>
     </tr>
   `).join("");
 }
 
-// Delegação de eventos pros botões da tabela
+// DelegaÃ§Ã£o de eventos pros botÃµes da tabela
 lista?.addEventListener("click", async (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
@@ -281,14 +553,15 @@ lista?.addEventListener("click", async (e) => {
   const id = Number(btn.dataset.id);
 
   if (action === "del") {
-    if (!confirm("Excluir essa transação?")) return;
+    const ok = await modalConfirmar("Excluir transaÃ§Ã£o", "Excluir essa transaÃ§Ã£o?", "Excluir");
+    if (!ok) return;
     await api(`/api/movimentacoes/${id}`, { method: "DELETE" });
     await refreshTudo();
     return;
   }
 
   if (action === "edit") {
-    // pega a transação atual pra preencher o form
+    // pega a transaÃ§Ã£o atual pra preencher o form
     const trans = await api(`/api/movimentacoes?mes=${encodeURIComponent(filtroMes.value)}`).then(r=>r.json());
     const t = trans.find(x => x.id === id);
     if (!t) return;
@@ -384,6 +657,123 @@ const body = {
   await refreshTudo();
 });
 
+formCaixinha?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const body = {
+    nome: caixinhaNomeInput.value,
+    objetivo: caixinhaObjetivoInput.value ? Number(caixinhaObjetivoInput.value) : null,
+    rendimento_tipo: caixinhaRendimentoTipoInput.value,
+    rendimento_percentual: Number(caixinhaRendimentoPercentualInput.value || 0),
+    instituicao: caixinhaInstituicaoInput.value,
+    produto: caixinhaProdutoInput.value,
+    auto_percentual: !!caixinhaAutoPercentualInput.checked
+  };
+
+  const id = caixinhaIdInput.value ? Number(caixinhaIdInput.value) : null;
+
+  if (id) {
+    await api(`/api/caixinhas/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+  } else {
+    await api("/api/caixinhas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+  }
+
+  resetFormCaixinha();
+  await carregarCaixinhas();
+});
+
+listaCaixinhas?.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-cx-action]");
+  if (!btn) return;
+
+  const action = btn.dataset.cxAction;
+  const id = Number(btn.dataset.id);
+
+  if (!id) return;
+
+  if (action === "deposito" || action === "saque") {
+    let valor = null;
+
+    const entrada = await modalInput(
+      action === "deposito" ? "Depositar na caixinha" : "Sacar da caixinha",
+      "Informe o valor da movimentaÃ§Ã£o",
+      "Confirmar"
+    );
+    valor = entrada == null ? null : Number(String(entrada).replace(",", "."));
+
+    if (!valor || !Number.isFinite(valor) || valor <= 0) return;
+
+    try {
+      await api(`/api/caixinhas/${id}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ valor })
+      });
+
+      // Atualiza tambÃ©m o saldo/resumo da conta principal apÃ³s transferÃªncia.
+      await refreshTudo();
+    } catch (err) {
+      const msg = String(err.message || "");
+      await modalAviso("NÃ£o foi possÃ­vel concluir", msg || "Erro ao movimentar caixinha.");
+    }
+
+    return;
+  }
+
+  if (action === "editar") {
+    const caixinhas = await api("/api/caixinhas").then(r => r.json());
+    const c = caixinhas.find(x => Number(x.id) === id);
+    if (!c) return;
+
+    caixinhaIdInput.value = String(c.id);
+    caixinhaNomeInput.value = c.nome || "";
+    caixinhaObjetivoInput.value = c.objetivo ?? "";
+    caixinhaRendimentoTipoInput.value = c.rendimento_tipo || "CDI";
+    caixinhaRendimentoPercentualInput.value = Number(c.rendimento_percentual || 100);
+    caixinhaInstituicaoInput.value = c.instituicao || "";
+    caixinhaProdutoInput.value = c.produto || "Conta";
+    caixinhaAutoPercentualInput.checked = Number(c.auto_percentual || 0) === 1;
+    caixinhaNomeInput.focus();
+    return;
+  }
+
+  if (action === "excluir") {
+    const confirmar = await modalConfirmar(
+      "Excluir caixinha",
+      "Deseja excluir a caixinha e todas as movimentaÃ§Ãµes?",
+      "Excluir"
+    );
+
+    if (!confirmar) return;
+
+    await api(`/api/caixinhas/${id}`, { method: "DELETE" });
+    await carregarCaixinhas();
+    resetFormCaixinha();
+  }
+});
+
+btnSyncRendimento?.addEventListener("click", async () => {
+  await api("/api/rendimento/atualizar", { method: "POST" });
+  await carregarCaixinhas();
+
+  if (typeof abrirModal === "function") {
+    await abrirModal({
+      titulo: "Taxas atualizadas",
+      texto: "CDI e taxas de instituiÃ§Ãµes foram sincronizados.",
+      mostrarCancelar: false,
+      fecharAoClicarFora: true
+    });
+  }
+});
+
 (async function init() {
 
   if (filtroMes && !filtroMes.value) {
@@ -395,9 +785,11 @@ const body = {
   await carregarCategoriasMeta();
 
   await refreshTudo();
+  await carregarCaixinhas();
+  resetFormCaixinha();
 
 })();
-// ====== RECORRÊNCIAS (visualização/teste) ======
+// ====== RECORRÃŠNCIAS (visualizaÃ§Ã£o/teste) ======
 const formRec = document.querySelector("#formRec");
 const listaRec = document.querySelector("#listaRec");
 const rDesc = document.querySelector("#r_descricao");
@@ -422,8 +814,8 @@ async function carregarResumoRecorrencias() {
   if (!resumoRec) return;
   const r = await api("/api/recorrencias/resumo").then(x => x.json());
   resumoRec.innerHTML = `
-    <b>Só recorrências ativas:</b>
-    Entradas ${money(r.entradas)} | Saídas ${money(r.saidas)} | Saldo ${money(r.saldo)}
+    <b>SÃ³ recorrÃªncias ativas:</b>
+    Entradas ${money(r.entradas)} | SaÃ­das ${money(r.saidas)} | Saldo ${money(r.saldo)}
   `;
 }
 
@@ -436,7 +828,7 @@ async function carregarRecorrencias() {
       <td>${r.categoria ?? "-"}</td>
       <td>${r.tipo}</td>
       <td>${money(r.valor)}</td>
-      <td>${r.ativo ? "Sim" : "Não"}</td>
+      <td>${r.ativo ? "Sim" : "NÃ£o"}</td>
       <td>
         <button data-ra="edit" data-id="${r.id}">Editar</button>
         <button data-ra="del" data-id="${r.id}">Excluir</button>
@@ -489,7 +881,8 @@ listaRec?.addEventListener("click", async (e) => {
   const id = Number(btn.dataset.id);
 
   if (action === "del") {
-    if (!confirm("Excluir essa recorrência?")) return;
+    const ok = await modalConfirmar("Excluir recorrÃªncia", "Excluir essa recorrÃªncia?", "Excluir");
+    if (!ok) return;
     await api(`/api/recorrencias/${id}`, { method: "DELETE" });
     await carregarRecorrencias();
     return;
@@ -526,7 +919,7 @@ btnGerar?.addEventListener("click", async () => {
       fecharAoClicarFora: true
     });
   } else {
-    alert(`Criadas: ${resp.criadas}`);
+    await modalAviso("Recorrencias geradas", `Criadas: ${resp.criadas}`);
   }
   await refreshTudo();
 });
@@ -553,7 +946,7 @@ async function carregarResumo() {
   resumoDiv.innerHTML = `
     <p>Saldo total: ${money(dados.saldo)}</p>
     <p>Entradas: ${money(dados.entradas)}</p>
-    <p>Saídas: ${money(dados.saidas)}</p>
+    <p>SaÃ­das: ${money(dados.saidas)}</p>
   `;
 }
 const chartCanvas = document.querySelector("#chartCats");
@@ -571,7 +964,7 @@ async function carregarGraficoCategorias() {
   const saidas = dados.map(x => Number(x.total_saidas || 0));
   const entradas = dados.map(x => Number(x.total_entradas || 0));
 
-  // destrói o antigo antes de criar outro (evita bug)
+  // destrÃ³i o antigo antes de criar outro (evita bug)
   if (chartCats) chartCats.destroy();
 
   chartCats = new Chart(chartCanvas, {
@@ -579,7 +972,7 @@ async function carregarGraficoCategorias() {
     data: {
       labels,
       datasets: [
-        { label: "Saídas", data: saidas, backgroundColor: "#ef4444" },
+        { label: "SaÃ­das", data: saidas, backgroundColor: "#ef4444" },
         { label: "Entradas", data: entradas, backgroundColor: "#22c55e" },
       ]
     },
@@ -604,8 +997,8 @@ async function carregarPrevisao() {
   previsaoDiv.innerHTML = `
     <b>Saldo atual:</b> ${money(p.saldo_atual)}<br/>
     <b>Entradas previstas:</b> ${money(p.entradas_previstas)}<br/>
-    <b>Saídas previstas:</b> ${money(p.saidas_previstas)}<br/>
-    <b>Saldo previsto (fim do mês):</b> ${money(p.saldo_previsto)}
+    <b>SaÃ­das previstas:</b> ${money(p.saidas_previstas)}<br/>
+    <b>Saldo previsto (fim do mÃªs):</b> ${money(p.saldo_previsto)}
   `;
 }
 
@@ -655,7 +1048,7 @@ async function carregarMetas(){
       ? ((m.gasto_mes / m.valor_meta) * 100).toFixed(0)
       : 0;
 
-    const alerta = perc > 100 ? "⚠" : "";
+    const alerta = perc > 100 ? "âš " : "";
 
     return `
       <tr>
@@ -720,7 +1113,7 @@ async function carregarControleCartao() {
       <strong>${money(dados.usado)}</strong>
     </div>
     <div>
-      <span>Disponível</span>
+      <span>DisponÃ­vel</span>
       <strong>${money(dados.disponivel)}</strong>
     </div>
   </div>
@@ -737,20 +1130,31 @@ async function carregarControleCartao() {
 fatCartao?.addEventListener("change", carregarControleCartao);
 
 async function refreshTudo() {
+  const safeRun = async (fn, nome) => {
+    try {
+      await fn();
+    } catch (err) {
+      console.error(`[refreshTudo] Falha em ${nome}:`, err?.message || err);
+    }
+  };
 
-  if (typeof carregarTransacoes === "function") await carregarTransacoes();
-  if (typeof carregarResumo === "function") await carregarResumo();
-  if (typeof carregarRelatorioCategorias === "function") await carregarRelatorioCategorias();
-  if (typeof carregarGraficoCategorias === "function") await carregarGraficoCategorias();
-  if (typeof carregarPrevisao === "function") await carregarPrevisao();
-  if (typeof carregarFatura === "function") await carregarFatura();
-  if (typeof carregarDashboard === "function") await carregarDashboard();
-  if (typeof carregarControleCartao === "function") await carregarControleCartao();
-  if (typeof carregarGraficoMensal === "function") await carregarGraficoMensal();
-  if (typeof carregarGraficoDiario === "function") await carregarGraficoDiario(filtroMes.value);
+  if (typeof carregarTransacoes === "function") await safeRun(carregarTransacoes, "carregarTransacoes");
+  if (typeof carregarResumo === "function") await safeRun(carregarResumo, "carregarResumo");
+  if (typeof carregarRelatorioCategorias === "function") await safeRun(carregarRelatorioCategorias, "carregarRelatorioCategorias");
+  if (typeof carregarPrevisao === "function") await safeRun(carregarPrevisao, "carregarPrevisao");
+  if (typeof carregarFatura === "function") await safeRun(carregarFatura, "carregarFatura");
+  if (typeof carregarDashboard === "function") await safeRun(carregarDashboard, "carregarDashboard");
+  if (typeof carregarControleCartao === "function") await safeRun(carregarControleCartao, "carregarControleCartao");
+  if (typeof carregarCaixinhas === "function") await safeRun(carregarCaixinhas, "carregarCaixinhas");
+
+  // Graficos por ultimo: falha de grafico nao pode impedir a renderizacao principal.
+  if (typeof carregarGraficoCategorias === "function") await safeRun(carregarGraficoCategorias, "carregarGraficoCategorias");
+  if (typeof carregarGraficoMensal === "function") await safeRun(carregarGraficoMensal, "carregarGraficoMensal");
+  if (typeof carregarGraficoDiario === "function") await safeRun(() => carregarGraficoDiario(filtroMes.value), "carregarGraficoDiario");
+  if (typeof carregarGraficoCaixinhas === "function") await safeRun(carregarGraficoCaixinhas, "carregarGraficoCaixinhas");
 }
 
-// ===== CARTÃO (visualização/teste) =====
+// ===== CARTÃƒO (visualizaÃ§Ã£o/teste) =====
 const formCartao = document.querySelector("#formCartao");
 const cNome = document.querySelector("#c_nome");
 const cLimite = document.querySelector("#c_limite");
@@ -806,15 +1210,15 @@ async function carregarCartoes() {
 
 function resetFormCartaoParaCriacao() {
   cartaoEditandoId = null;
-  if (tituloModalCartao) tituloModalCartao.textContent = "Criar Cartão";
+  if (tituloModalCartao) tituloModalCartao.textContent = "Criar CartÃ£o";
   if (btnSalvarCartao) btnSalvarCartao.textContent = "Criar";
   formCartao?.reset();
 }
 
 function preencherFormCartaoParaEdicao(cartao) {
   cartaoEditandoId = Number(cartao.id);
-  if (tituloModalCartao) tituloModalCartao.textContent = "Editar Cartão";
-  if (btnSalvarCartao) btnSalvarCartao.textContent = "Salvar alterações";
+  if (tituloModalCartao) tituloModalCartao.textContent = "Editar CartÃ£o";
+  if (btnSalvarCartao) btnSalvarCartao.textContent = "Salvar alteraÃ§Ãµes";
 
   cNome.value = cartao.nome ?? "";
   cLimite.value = Number(cartao.limite ?? 0);
@@ -949,7 +1353,7 @@ formCompra?.addEventListener("submit", async (e) => {
   });
   formCompra.reset();
   ccData.valueAsDate = new Date();
-  alert("Compra lançada e parcelas geradas!");
+  await modalAviso("Sucesso", "Compra lanÃ§ada e parcelas geradas!");
 });
 
 btnFat?.addEventListener("click", async () => {
@@ -983,7 +1387,7 @@ btnFat?.addEventListener("click", async () => {
   await carregarFatura();
 })();
 
-// Função utilitária para abrir/fechar modais de forma segura
+// FunÃ§Ã£o utilitÃ¡ria para abrir/fechar modais de forma segura
 function setupModal(modalId, openBtnId, closeBtnId) {
   const modal = document.getElementById(modalId);
   const openBtn = document.getElementById(openBtnId);
@@ -1017,14 +1421,14 @@ setupModal("modalCartao", "abrirModalCartao", "fecharModalCartao");
 setupModal("modalRec", "abrirModalRec", "fecharModalRec");
 setupModal("modalParcelas", null, "fecharParcelas");
 setupModal("modalCategoria", "btnNovaCategoria", "cancelarCategoria");
-// Modal padrão já tem lógica própria, não precisa duplicar
+// Modal padrÃ£o jÃ¡ tem lÃ³gica prÃ³pria, nÃ£o precisa duplicar
 const btnPDF = document.getElementById("btnPDF");
 
 btnPDF?.addEventListener("click", () => {
   const mes = filtroMes.value;
 
   if (!mes) {
-    alert("Selecione um mês");
+    modalAviso("Aviso", "Selecione um mÃªs");
     return;
   }
 
@@ -1068,7 +1472,7 @@ function bindPagarFatura() {
     if (fatura.total === 0) {
       await abrirModal({
         titulo: "Aviso",
-        texto: "Essa fatura já está paga ou não possui parcelas abertas"
+        texto: "Essa fatura jÃ¡ estÃ¡ paga ou nÃ£o possui parcelas abertas"
       });
       return;
     }
@@ -1160,9 +1564,9 @@ document.addEventListener("click", async (e) => {
   timeline.innerHTML = parcelas.map(p => {
 
     const statusIcon =
-      p.status === "paga" ? "✔" :
-      p.status === "aberta" ? "⏳" :
-      "•";
+      p.status === "paga" ? "âœ”" :
+      p.status === "aberta" ? "â³" :
+      "â€¢";
 
     return `
       <div class="timeline-item">
@@ -1351,6 +1755,10 @@ document.addEventListener("DOMContentLoaded", () => {
       chartDiario.destroy();
       chartDiario = null;
     }
+    if (chartCaixinhas) {
+      chartCaixinhas.destroy();
+      chartCaixinhas = null;
+    }
 
     // Espera o repaint da aba ativa para garantir que os canvases estejam visiveis.
     await new Promise((resolve) => requestAnimationFrame(resolve));
@@ -1364,6 +1772,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (typeof carregarGraficoDiario === "function") {
       await carregarGraficoDiario(filtroMes.value);
+    }
+    if (typeof carregarGraficoCaixinhas === "function") {
+      await carregarGraficoCaixinhas();
     }
   }
 
@@ -1411,7 +1822,7 @@ async function carregarGraficoDiario(mes) {
           tension: 0.3
         },
         {
-          label: "Saídas",
+          label: "SaÃ­das",
           data: saidas,
           borderColor: "#ef4444",
           backgroundColor: "#ef444433",

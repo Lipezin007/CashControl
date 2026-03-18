@@ -1,11 +1,12 @@
-const db = require("./db");
+﻿const db = require("./db");
+const { getTaxaReferencia, DEFAULT_CDI_ANUAL } = require("./rendimentoService");
 
-function formatMes(date){
-  return date.getFullYear() + "-" + String(date.getMonth()+1).padStart(2,"0");
+function formatMes(date) {
+    return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0");
 }
 
 function getCategorias(usuario_id) {
-  return db.prepare(`
+    return db.prepare(`
     SELECT *
     FROM categorias
     WHERE usuario_id = ?
@@ -14,32 +15,32 @@ function getCategorias(usuario_id) {
 }
 
 function addCategoria(usuario_id, nome) {
-  return db.prepare(`
+    return db.prepare(`
     INSERT INTO categorias (usuario_id, nome)
-    VALUES (?, ?)
+    VALUES (??)
   `).run(usuario_id, nome);
 }
 
 function inserirMovimentacao(descricao, valor, tipo, categoria_id, data, usuario_id) {
-  return db.prepare(`
+    return db.prepare(`
     INSERT INTO movimentacoes (descricao, valor, tipo, categoria_id, data, usuario_id)
-    VALUES (?, ?, ?, ?, ?, ?)
+    VALUES (??, ??)
   `).run(descricao, valor, tipo, categoria_id, data, usuario_id);
 }
 
 function updateMovimentacao(id, descricao, valor, tipo, categoria_id, data, usuario_id) {
-  return db.prepare(`
+    return db.prepare(`
     UPDATE movimentacoes
     SET descricao=?, valor=?, tipo=?, categoria_id=?, data=?
     WHERE id=? AND usuario_id = ?
   `).run(descricao, valor, tipo, categoria_id, data, id, usuario_id);
 }
 
-function getSaldoAtual(usuario_id){
+function getSaldoAtual(usuario_id) {
 
-  const hoje = new Date().toISOString().slice(0,10);
+    const hoje = new Date().toISOString().slice(0, 10);
 
-  const row = db.prepare(`
+    const row = db.prepare(`
     SELECT COALESCE(SUM(
       CASE
         WHEN tipo='entrada' THEN valor
@@ -51,12 +52,34 @@ function getSaldoAtual(usuario_id){
       AND usuario_id = ?
   `).get(hoje, usuario_id);
 
-  return row.saldo;
+    return row.saldo;
+}
+
+function getSaldoDisponivelParaCaixinhas(usuario_id) {
+    const externo = db.prepare(`
+    SELECT COALESCE(SUM(
+      CASE
+        WHEN tipo='entrada' THEN valor
+        WHEN tipo='saida' THEN -valor
+      END
+    ),0) AS saldo
+    FROM movimentacoes
+    WHERE usuario_id = ?
+      AND IFNULL(origem, '') != 'caixinha'
+  `).get(usuario_id).saldo;
+
+    const totalCaixinhas = db.prepare(`
+    SELECT COALESCE(SUM(saldo),0) AS total
+    FROM caixinhas
+    WHERE usuario_id = ?
+  `).get(usuario_id).total;
+
+    return Number(externo || 0) - Number(totalCaixinhas || 0);
 }
 
 function getResumo(mesYYYYMM, usuario_id) {
 
-  const row = db.prepare(`
+    const row = db.prepare(`
     SELECT
       COALESCE(SUM(valor) FILTER (WHERE tipo='entrada'),0) AS entradas,
       COALESCE(SUM(valor) FILTER (WHERE tipo='saida'),0) AS saidas,
@@ -71,11 +94,11 @@ function getResumo(mesYYYYMM, usuario_id) {
       AND usuario_id = ?
   `).get(mesYYYYMM, usuario_id);
 
-  return row;
+    return row;
 }
 
 function relatorioPorCategoria(mes, usuario_id = null) {
-  return db.prepare(`
+    return db.prepare(`
     SELECT
       c.nome AS categoria,
       COALESCE(SUM(CASE WHEN t.tipo='saida' THEN t.valor ELSE 0 END), 0) AS total_saidas,
@@ -91,22 +114,22 @@ function relatorioPorCategoria(mes, usuario_id = null) {
   `).all(usuario_id, mes, usuario_id);
 }
 
-function getPrevisaoMes(mesYYYYMM){
+function getPrevisaoMes(mesYYYYMM) {
 
-  const resumo = getResumo(mesYYYYMM);
-  const fatura = getFaturaCartao(mesYYYYMM);
+    const resumo = getResumo(mesYYYYMM);
+    const fatura = getFaturaCartao(mesYYYYMM);
 
-  return {
-    saldo_atual: resumo.saldo,
-    entradas_previstas: resumo.entradas,
-    saidas_previstas: resumo.saidas + fatura,
-    saldo_previsto: resumo.saldo + resumo.entradas - resumo.saidas - fatura
-  };
+    return {
+        saldo_atual: resumo.saldo,
+        entradas_previstas: resumo.entradas,
+        saidas_previstas: resumo.saidas + fatura,
+        saldo_previsto: resumo.saldo + resumo.entradas - resumo.saidas - fatura
+    };
 
 }
 
 function getRecorrencias(usuario_id = null) {
-  return db.prepare(`
+    return db.prepare(`
     SELECT r.*, c.nome as categoria
     FROM recorrencias r
     LEFT JOIN categorias c ON c.id = r.categoria_id
@@ -117,30 +140,30 @@ function getRecorrencias(usuario_id = null) {
 }
 
 function addRecorrencia(descricao, valor, tipo, categoria_id, dia_mes, usuario_id) {
-  return db.prepare(`
+    return db.prepare(`
     INSERT INTO recorrencias (descricao, valor, tipo, categoria_id, dia_mes, ativo, usuario_id)
-    VALUES (?, ?, ?, ?, ?, 1, ?)
-  `).run(descricao, valor, tipo, categoria_id ?? null, dia_mes, usuario_id);
+    VALUES (??, ??, 1, ?)
+  `).run(descricao, valor, tipo, categoria_id ? ? null, dia_mes, usuario_id);
 }
 
 function setRecorrenciaAtiva(id, ativo, usuario_id) {
-  return db.prepare("UPDATE recorrencias SET ativo=? WHERE id=? AND usuario_id=?").run(ativo ? 1 : 0, id, usuario_id);
-}
+    return db.prepare("UPDATE recorrencias SET ativo=? WHERE id=? AND usuario_id=?.run(ativo ? 1 : 0, id, usuario_id);
+    }
 
-function deleteRecorrencia(id, usuario_id) {
-  return db.prepare("DELETE FROM recorrencias WHERE id=? AND usuario_id=?").run(id, usuario_id);
-}
+    function deleteRecorrencia(id, usuario_id) {
+        return db.prepare("DELETE FROM recorrencias WHERE id=? AND usuario_id=?.run(id, usuario_id);
+        }
 
-function updateRecorrencia(id, descricao, valor, tipo, categoria_id, dia_mes, ativo, usuario_id) {
-  return db.prepare(`
+        function updateRecorrencia(id, descricao, valor, tipo, categoria_id, dia_mes, ativo, usuario_id) {
+            return db.prepare(`
     UPDATE recorrencias
     SET descricao=?, valor=?, tipo=?, categoria_id=?, dia_mes=?, ativo=?
     WHERE id=? AND usuario_id=?
-  `).run(descricao, valor, tipo, categoria_id ?? null, dia_mes, ativo ? 1 : 0, id, usuario_id);
-}
+  `).run(descricao, valor, tipo, categoria_id ? ? null, dia_mes, ativo ? 1 : 0, id, usuario_id);
+        }
 
-function resumoRecorrencias() {
-  return db.prepare(`
+        function resumoRecorrencias() {
+            return db.prepare(`
     SELECT
       COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) AS entradas,
       COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) AS saidas,
@@ -149,56 +172,56 @@ function resumoRecorrencias() {
     FROM recorrencias
     WHERE ativo = 1
   `).get();
-}
+        }
 
-function gerarRecorrencias(mesYYYYMM, usuario_id) {
-  const recorrs = db.prepare("SELECT * FROM recorrencias WHERE ativo = 1 AND usuario_id = ?").all(usuario_id);
+        function gerarRecorrencias(mesYYYYMM, usuario_id) {
+            const recorrs = db.prepare("SELECT * FROM recorrencias WHERE ativo = 1 AND usuario_id = ?.all(usuario_id);
 
-  const inserir = db.prepare(`
+                const inserir = db.prepare(`
   INSERT INTO movimentacoes
   (descricao, valor, tipo, origem, categoria_id, data, usuario_id)
-  VALUES (?, ?, ?, 'pix', ?, ?, ?)
+  VALUES (??, 'pix', ??)
 `);
 
-  let criadas = 0;
-  for (const r of recorrs) {
-    const data = `${mesYYYYMM}-${String(r.dia_mes).padStart(2, "0")}`;
+                let criadas = 0;
+                for (const r of recorrs) {
+                    const data = `${mesYYYYMM}-${String(r.dia_mes).padStart(2, "0")}`;
 
-    const existe = db.prepare(`
+                    const existe = db.prepare(`
       SELECT 1 FROM movimentacoes
       WHERE descricao=? AND valor=? AND tipo=? AND IFNULL(categoria_id,0)=IFNULL(?,0) AND data=? AND usuario_id = ?
       LIMIT 1
     `).get(r.descricao, r.valor, r.tipo, r.categoria_id, data, usuario_id);
 
-    if (!existe) {
-      inserir.run(r.descricao, r.valor, r.tipo, r.categoria_id, data, usuario_id);
-      criadas++;
-    }
-  }
-  return { ok: true, mes: mesYYYYMM, criadas };
-}
+                    if (!existe) {
+                        inserir.run(r.descricao, r.valor, r.tipo, r.categoria_id, data, usuario_id);
+                        criadas++;
+                    }
+                }
+                return { ok: true, mes: mesYYYYMM, criadas };
+            }
 
-// ===== CARTÃO DE CRÉDITO =====
-function addCartao(usuario_id, nome, limite, dia_fechamento, dia_vencimento) {
-  return db.prepare(`
+            // ===== CARTÃƒO DE CRÃ‰DITO =====
+            function addCartao(usuario_id, nome, limite, dia_fechamento, dia_vencimento) {
+                return db.prepare(`
     INSERT INTO cartoes
     (usuario_id, nome, limite, dia_fechamento, dia_vencimento)
-    VALUES (?, ?, ?, ?, ?)
+    VALUES (??, ??)
   `).run(usuario_id, nome, limite, dia_fechamento, dia_vencimento);
-}
+            }
 
-function getCartoes(usuario_id) {
-  return db.prepare(`
+            function getCartoes(usuario_id) {
+                return db.prepare(`
     SELECT *
     FROM cartoes
     WHERE usuario_id = ?
     AND ativo = 1
     ORDER BY nome
   `).all(usuario_id);
-}
+            }
 
-function updateCartao(id, usuario_id, nome, limite, dia_fechamento, dia_vencimento) {
-  return db.prepare(`
+            function updateCartao(id, usuario_id, nome, limite, dia_fechamento, dia_vencimento) {
+                return db.prepare(`
     UPDATE cartoes
     SET nome = ?,
         limite = ?,
@@ -208,74 +231,74 @@ function updateCartao(id, usuario_id, nome, limite, dia_fechamento, dia_vencimen
       AND usuario_id = ?
       AND ativo = 1
   `).run(
-    nome,
-    Number(limite || 0),
-    Number(dia_fechamento),
-    Number(dia_vencimento),
-    Number(id),
-    usuario_id
-  );
-}
+                    nome,
+                    Number(limite || 0),
+                    Number(dia_fechamento),
+                    Number(dia_vencimento),
+                    Number(id),
+                    usuario_id
+                );
+            }
 
-function deleteCartao(id, usuario_id) {
-  return db.prepare(`
+            function deleteCartao(id, usuario_id) {
+                return db.prepare(`
     UPDATE cartoes
     SET ativo = 0
     WHERE id = ?
       AND usuario_id = ?
       AND ativo = 1
   `).run(Number(id), usuario_id);
-}
+            }
 
-function yyyymmFromDate(yyyy_mm_dd) {
-  return String(yyyy_mm_dd).slice(0, 7);
-}
+            function yyyymmFromDate(yyyy_mm_dd) {
+                return String(yyyy_mm_dd).slice(0, 7);
+            }
 
-function addMonths(yyyymm, k) {
-  const [y, m] = yyyymm.split("-").map(Number);
-  const d = new Date(y, (m - 1) + k, 1);
-  const yy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  return `${yy}-${mm}`;
-}
+            function addMonths(yyyymm, k) {
+                const [y, m] = yyyymm.split("-").map(Number);
+                const d = new Date(y, (m - 1) + k, 1);
+                const yy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, "0");
+                return `${yy}-${mm}`;
+            }
 
-function calcParcelaFixa(valorTotal, n, jurosMensal) {
-  const P = Number(valorTotal);
-  const i = Number(jurosMensal || 0);
-  const N = Number(n);
-  if (!i) return P / N;
-  return (P * i) / (1 - Math.pow(1 + i, -N));
-}
+            function calcParcelaFixa(valorTotal, n, jurosMensal) {
+                const P = Number(valorTotal);
+                const i = Number(jurosMensal || 0);
+                const N = Number(n);
+                if (!i) return P / N;
+                return (P * i) / (1 - Math.pow(1 + i, -N));
+            }
 
-function criarCompraCartao({
-  cartao_id,
-  descricao,
-  valor_total,
-  parcelas,
-  juros_mensal,
-  data_compra,
-  categoria_id,
-  usuario_id
-}) {
+            function criarCompraCartao({
+                cartao_id,
+                descricao,
+                valor_total,
+                parcelas,
+                juros_mensal,
+                data_compra,
+                categoria_id,
+                usuario_id
+            }) {
 
-  const cartao = db.prepare(`
+                const cartao = db.prepare(`
     SELECT dia_fechamento
     FROM cartoes
     WHERE id = ?
       AND usuario_id = ?
   `).get(cartao_id, usuario_id);
 
-  if (!cartao) {
-    return { ok:false, erro:"Cartão não encontrado" };
-  }
+                if (!cartao) {
+                    return { ok: false, erro: "CartÃ£o nÃ£o encontrado" };
+                }
 
-  const insertCompra = db.prepare(`
+                const insertCompra = db.prepare(`
     INSERT INTO compras_cartao
     (cartao_id, descricao, valor_total, parcelas, juros_mensal, data_compra, categoria_id, usuario_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (??, ??, ??)
   `);
 
-  const insertParcela = db.prepare(`
+                const insertParcela = db.prepare(`
     INSERT INTO parcelas_cartao (
   cartao_id,
   valor,
@@ -286,80 +309,80 @@ function criarCompraCartao({
   status,
   compra_id
 )
-VALUES (?, ?, ?, ?, ?, ?, 'aberta', ?)
+VALUES (??, ??, 'aberta', ?)
   `);
 
- const data = new Date(data_compra);
-const diaCompra = data.getDate();
+                const data = new Date(data_compra);
+                const diaCompra = data.getDate();
 
-// cria a data no primeiro dia do mês da compra
-let mes0Date = new Date(data.getFullYear(), data.getMonth(), 1);
+                // cria a data no primeiro dia do mÃªs da compra
+                let mes0Date = new Date(data.getFullYear(), data.getMonth(), 1);
 
-// se passou do fechamento → vai para próxima fatura
-if (data.getDate() > cartao.dia_fechamento) {
-  mes0Date.setMonth(mes0Date.getMonth() + 1);
-}
+                // se passou do fechamento â†’ vai para prÃ³xima fatura
+                if (data.getDate() > cartao.dia_fechamento) {
+                    mes0Date.setMonth(mes0Date.getMonth() + 1);
+                }
 
-const mes0 =
-  mes0Date.getFullYear() +
-  "-" +
-  String(mes0Date.getMonth() + 1).padStart(2, "0");
+                const mes0 =
+                    mes0Date.getFullYear() +
+                    "-" +
+                    String(mes0Date.getMonth() + 1).padStart(2, "0");
 
-  const compra = insertCompra.run(
-  cartao_id,
-  descricao,
-  Number(valor_total),
-  Number(parcelas),
-  Number(juros_mensal || 0),
-  data_compra,
-  categoria_id ?? null,
-  usuario_id
-);
+                const compra = insertCompra.run(
+                    cartao_id,
+                    descricao,
+                    Number(valor_total),
+                    Number(parcelas),
+                    Number(juros_mensal || 0),
+                    data_compra,
+                    categoria_id ? ? null,
+                    usuario_id
+                );
 
-  const compraId = compra.lastInsertRowid;
+                const compraId = compra.lastInsertRowid;
 
-  const N = Number(parcelas);
-  const total = Number(valor_total);
+                const N = Number(parcelas);
+                const total = Number(valor_total);
 
-  const parcelaBase = Math.floor((total / N) * 100) / 100;
+                const parcelaBase = Math.floor((total / N) * 100) / 100;
 
-  let totalDistribuido = 0;
-console.log("mes inicial:", mes0Date);
-  for (let p = 1; p <= N; p++) {
+                let totalDistribuido = 0;
+                console.log("mes inicial:", mes0Date);
+                for (let p = 1; p <= N; p++) {
 
-  let valorParcela = parcelaBase;
+                    let valorParcela = parcelaBase;
 
-  if (p === N) {
-    valorParcela = Number((total - totalDistribuido).toFixed(2));
-  }
+                    if (p === N) {
+                        valorParcela = Number((total - totalDistribuido).toFixed(2));
+                    }
 
-  totalDistribuido += valorParcela;
+                    totalDistribuido += valorParcela;
 
-  const d = new Date(mes0Date);
-  d.setMonth(mes0Date.getMonth() + (p - 1));
+                    const d = new Date(mes0Date);
+                    d.setMonth(mes0Date.getMonth() + (p - 1));
 
-  const mesRef =
-    d.getFullYear() +
-    "-" +
-    String(d.getMonth() + 1).padStart(2, "0");
+                    const mesRef =
+                        d.getFullYear() +
+                        "-" +
+                        String(d.getMonth() + 1).padStart(2, "0");
 
-  insertParcela.run(
-  cartao_id,     // 1
-  valorParcela,  // 2
-  p,             // 3
-  N,             // 4
-  mesRef,        // 5
-  usuario_id,    // 6 🔥
-  compraId       // 7 🔥
-);
-}
+                    insertParcela.run(
+                        cartao_id, // 1
+                        valorParcela, // 2
+                        p, // 3
+                        N, // 4
+                        mesRef, // 5
+                        usuario_id, // 6 ðŸ”¥
+                        compraId // 7 ðŸ”¥
+                    );
+                }
 
-  return { ok:true, compraId };
-}
+                return { ok: true, compraId };
+            }
 
-function getFaturaCartao(cartao_id, mes, usuario_id = null){
+            function getFaturaCartao(cartao_id, mes, usuario_id = null) {
 
-  const itens = db.prepare(`
+                const itens = db.prepare(`
     SELECT
       pc.compra_id,
       pc.numero_parcela,
@@ -382,18 +405,18 @@ function getFaturaCartao(cartao_id, mes, usuario_id = null){
     ORDER BY pc.numero_parcela
   `).all(usuario_id, cartao_id, mes, usuario_id);
 
-  const total = itens.reduce((s,x)=> s + Number(x.valor),0);
+                const total = itens.reduce((s, x) => s + Number(x.valor), 0);
 
-  return {
-    cartao_id,
-    mes,
-    total,
-    itens
-  };
-}
+                return {
+                    cartao_id,
+                    mes,
+                    total,
+                    itens
+                };
+            }
 
-function getFaturasMes(mesYYYYMM, usuario_id) {
-  return db.prepare(`
+            function getFaturasMes(mesYYYYMM, usuario_id) {
+                return db.prepare(`
     SELECT
       ca.id AS cartao_id,
       ca.nome AS cartao,
@@ -409,16 +432,15 @@ function getFaturasMes(mesYYYYMM, usuario_id) {
     HAVING total > 0
     ORDER BY total DESC
   `).all(mesYYYYMM, usuario_id);
-}
+            }
 
 
-function setParcelaStatus(id, status, usuario_id) {
-  return db.prepare("UPDATE parcelas_cartao SET status=? WHERE id=? AND cartao_id IN (SELECT id FROM cartoes WHERE usuario_id = ?)"
-  ).run(status, Number(id), usuario_id);
-}
+            function setParcelaStatus(id, status, usuario_id) {
+                return db.prepare("UPDATE parcelas_cartao SET status=? WHERE id=? AND cartao_id IN (SELECT id FROM cartoes WHERE usuario_id = ?.run(status, Number(id), usuario_id);
+                }
 
-function deleteCompraCartao(id, usuario_id) {
-  const compra = db.prepare(`
+                function deleteCompraCartao(id, usuario_id) {
+                    const compra = db.prepare(`
     SELECT cc.id
     FROM compras_cartao cc
     JOIN cartoes ca ON ca.id = cc.cartao_id
@@ -426,32 +448,32 @@ function deleteCompraCartao(id, usuario_id) {
       AND ca.usuario_id = ?
   `).get(id, usuario_id);
 
-  if (!compra) {
-    return { ok: false, erro: "Acesso negado" };
-  }
+                    if (!compra) {
+                        return { ok: false, erro: "Acesso negado" };
+                    }
 
-  // apaga parcelas primeiro
-  db.prepare(`
+                    // apaga parcelas primeiro
+                    db.prepare(`
     DELETE FROM parcelas_cartao
     WHERE compra_id = ?
   `).run(id);
 
-  // depois apaga a compra
-  db.prepare(`
+                    // depois apaga a compra
+                    db.prepare(`
     DELETE FROM compras_cartao
     WHERE id = ?
   `).run(id);
 
-  return { ok: true };
-}
+                    return { ok: true };
+                }
 
-// ===== FIM CARTÃO DE CRÉDITO =====
+                // ===== FIM CARTÃƒO DE CRÃ‰DITO =====
 
 
 
-function getRelatorioCategorias(mes, usuario_id) {
+                function getRelatorioCategorias(mes, usuario_id) {
 
-  return db.prepare(`
+                    return db.prepare(`
 
   SELECT
     c.id,
@@ -486,27 +508,27 @@ function getRelatorioCategorias(mes, usuario_id) {
   ORDER BY total_saidas DESC
 
   `).all(
-    mes, usuario_id,
-    mes, usuario_id,
-    usuario_id
-  );
-}
+                        mes, usuario_id,
+                        mes, usuario_id,
+                        usuario_id
+                    );
+                }
 
-function getPrevisao(mesYYYYMM, usuario_id) {
-  const hoje = new Date();
-  const y = hoje.getFullYear();
-  const m = String(hoje.getMonth() + 1).padStart(2, "0");
-  const mesAtual = `${y}-${m}`;
-  const diaHoje = hoje.getDate();
+                function getPrevisao(mesYYYYMM, usuario_id) {
+                    const hoje = new Date();
+                    const y = hoje.getFullYear();
+                    const m = String(hoje.getMonth() + 1).padStart(2, "0");
+                    const mesAtual = `${y}-${m}`;
+                    const diaHoje = hoje.getDate();
 
-  // mês atual: só conta recorrências do dia de hoje pra frente
-  // mês futuro: conta tudo
-  // mês passado: não conta nada (previsão)
-  let diaMin = 1;
-  if (mesYYYYMM === mesAtual) diaMin = diaHoje;
-  if (mesYYYYMM < mesAtual) diaMin = 99;
+                    // mÃªs atual: sÃ³ conta recorrÃªncias do dia de hoje pra frente
+                    // mÃªs futuro: conta tudo
+                    // mÃªs passado: nÃ£o conta nada (previsÃ£o)
+                    let diaMin = 1;
+                    if (mesYYYYMM === mesAtual) diaMin = diaHoje;
+                    if (mesYYYYMM < mesAtual) diaMin = 99;
 
-  const rec = db.prepare(`
+                    const rec = db.prepare(`
     SELECT
       COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) AS entradas_previstas,
       COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) AS saidas_previstas
@@ -516,7 +538,7 @@ function getPrevisao(mesYYYYMM, usuario_id) {
       AND usuario_id = ?
   `).get(diaMin, usuario_id);
 
-  const atual = db.prepare(`
+                    const atual = db.prepare(`
   SELECT
     COALESCE(SUM(
       CASE
@@ -529,23 +551,23 @@ function getPrevisao(mesYYYYMM, usuario_id) {
     AND usuario_id = ?
 `).get(usuario_id);
 
-  const saldo_previsto =
-    Number(atual.saldo_atual) + Number(rec.entradas_previstas) - Number(rec.saidas_previstas);
+                    const saldo_previsto =
+                        Number(atual.saldo_atual) + Number(rec.entradas_previstas) - Number(rec.saidas_previstas);
 
-  return {
-    mes: mesYYYYMM,
-    saldo_atual: Number(atual.saldo_atual),
-    entradas_previstas: Number(rec.entradas_previstas),
-    saidas_previstas: Number(rec.saidas_previstas),
-    saldo_previsto: Number(saldo_previsto),
-  };
-}
+                    return {
+                        mes: mesYYYYMM,
+                        saldo_atual: Number(atual.saldo_atual),
+                        entradas_previstas: Number(rec.entradas_previstas),
+                        saidas_previstas: Number(rec.saidas_previstas),
+                        saldo_previsto: Number(saldo_previsto),
+                    };
+                }
 
-function round2(n) { return Math.round(Number(n) * 100) / 100; }
+                function round2(n) { return Math.round(Number(n) * 100) / 100; }
 
-function getMovimentacoes(mes, usuario_id = null){
+                function getMovimentacoes(mes, usuario_id = null) {
 
-  return db.prepare(`
+                    return db.prepare(`
     SELECT
       m.id,
       m.data,
@@ -563,308 +585,628 @@ function getMovimentacoes(mes, usuario_id = null){
     ORDER BY m.data DESC
   `).all(usuario_id, mes, usuario_id);
 
-}
+                }
 
-function criarMovimentacao(payload) {
+                function criarMovimentacao(payload) {
 
-  const {
-    descricao,
-    valor,
-    tipo,
-    origem,
-    data,
-    categoria_id,
-    usuario_id
-  } = payload;
+                    const {
+                        descricao,
+                        valor,
+                        tipo,
+                        origem,
+                        data,
+                        categoria_id,
+                        usuario_id
+                    } = payload;
 
-  if (origem === "cartao_credito") {
-    return criarCompraCartao(payload);
-  }
+                    if (origem === "cartao_credito") {
+                        return criarCompraCartao(payload);
+                    }
 
-  return db.prepare(`
+                    return db.prepare(`
     INSERT INTO movimentacoes
     (descricao, valor, tipo, origem, data, categoria_id, usuario_id)
-    VALUES (?,?,?,?,?,?,?)
+    VALUES (??,??)
   `).run(
-    descricao,
-    round2(valor),
-    tipo,
-    origem,
-    data,
-    categoria_id ?? null,
-    usuario_id
-  );
-}
+                        descricao,
+                        round2(valor),
+                        tipo,
+                        origem,
+                        data,
+                        categoria_id ? ? null,
+                        usuario_id
+                    );
+                }
 
-function editarMovimentacao(id, payload, usuario_id) {
-  const { descricao, valor, tipo, origem, data, categoria_id, cartao_id } = payload;
+                function editarMovimentacao(id, payload, usuario_id) {
+                    const { descricao, valor, tipo, origem, data, categoria_id, cartao_id } = payload;
 
-  return db.prepare(`
+                    return db.prepare(`
     UPDATE movimentacoes
     SET descricao=?, valor=?, tipo=?, origem=?, data=?, categoria_id=?, cartao_id=?
     WHERE id=? AND usuario_id = ?
   `).run(
-    descricao,
-    round2(valor),
-    tipo,
-    origem,
-    data,
-    categoria_id ?? null,
-    cartao_id ?? null,
-    Number(id),
-    usuario_id
-  );
+                        descricao,
+                        round2(valor),
+                        tipo,
+                        origem,
+                        data,
+                        categoria_id ? ? null,
+                        cartao_id ? ? null,
+                        Number(id),
+                        usuario_id
+                    );
+                }
+
+                function deletarMovimentacao(id, usuario_id) {
+                    return db.prepare(`DELETE FROM movimentacoes WHERE id=? AND usuario_id = ?.run(Number(id), usuario_id);
 }
 
-function deletarMovimentacao(id, usuario_id) {
-  return db.prepare(`DELETE FROM movimentacoes WHERE id=? AND usuario_id = ?`).run(Number(id), usuario_id);
-}
+function getLimiteCartao(cartao_id, usuario_id) {
 
-function getLimiteCartao(cartao_id, usuario_id){
+    const cartao = db.prepare(`
+                            SELECT limite FROM cartoes WHERE id = ?
+                            AND usuario_id = ?
+                            `).get(cartao_id, usuario_id);
 
-  const cartao = db.prepare(`
-    SELECT limite
-    FROM cartoes
-    WHERE id=?
-      AND usuario_id = ?
-  `).get(cartao_id, usuario_id);
+    const usado = db.prepare(`
+                            SELECT COALESCE(SUM(valor), 0) as total FROM parcelas_cartao WHERE cartao_id = ? AND status != 'paga'
+                            `).get(cartao_id);
 
-  const usado = db.prepare(`
-    SELECT COALESCE(SUM(valor),0) as total
-    FROM parcelas_cartao
-    WHERE cartao_id=? AND status!='paga'
-  `).get(cartao_id);
-
-  return {
-    limite: cartao.limite,
-    usado: usado.total,
-    disponivel: cartao.limite - usado.total
-  };
+    return {
+        limite: cartao.limite,
+        usado: usado.total,
+        disponivel: cartao.limite - usado.total
+    };
 }
 
 function getDashboard(mes, usuario_id) {
 
-  const resumo = db.prepare(`
-    SELECT
-      COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) as entradas,
-      COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) as saidas
-    FROM movimentacoes
-    WHERE substr(data,1,7)=?
-      AND usuario_id = ?
-  `).get(mes, usuario_id);
+    const resumo = db.prepare(`
+                            SELECT COALESCE(SUM(CASE WHEN tipo = 'entrada'
+                                THEN valor ELSE 0 END), 0) as entradas,
+                            COALESCE(SUM(CASE WHEN tipo = 'saida'
+                                THEN valor ELSE 0 END), 0) as saidas FROM movimentacoes WHERE substr(data, 1, 7) = ?
+                            AND usuario_id = ?
+                            `).get(mes, usuario_id);
 
-  const saldo = db.prepare(`
-    SELECT
-      COALESCE(SUM(
-        CASE
-          WHEN tipo='entrada' THEN valor
-          WHEN tipo='saida' THEN -valor
-        END
-      ),0) as saldo
-    FROM movimentacoes
-    WHERE usuario_id = ?
-  `).get(usuario_id);
+    const saldo = db.prepare(`
+                            SELECT COALESCE(SUM(
+                                CASE WHEN tipo = 'entrada'
+                                THEN valor WHEN tipo = 'saida'
+                                THEN - valor END
+                            ), 0) as saldo FROM movimentacoes WHERE usuario_id = ?
+                            `).get(usuario_id);
 
-  const fatura = db.prepare(`
-    SELECT COALESCE(SUM(pc.valor),0) as total
-    FROM parcelas_cartao pc
-    JOIN compras_cartao cc ON cc.id = pc.compra_id
-    WHERE pc.mes_ref = ?
-      AND pc.status = 'aberta'
-      AND cc.usuario_id = ?
-  `).get(mes, usuario_id);
+    const fatura = db.prepare(`
+                            SELECT COALESCE(SUM(pc.valor), 0) as total FROM parcelas_cartao pc JOIN compras_cartao cc ON cc.id = pc.compra_id WHERE pc.mes_ref = ?
+                            AND pc.status = 'aberta'
+                            AND cc.usuario_id = ?
+                            `).get(mes, usuario_id);
 
-  return {
-    saldo: saldo.saldo,
-    entradas: resumo.entradas,
-    saidas: resumo.saidas,
-    fatura: fatura.total
-  };
+    return {
+        saldo: saldo.saldo,
+        entradas: resumo.entradas,
+        saidas: resumo.saidas,
+        fatura: fatura.total
+    };
 
 }
 
 function setMetaCategoria(usuario_id, categoria_id, valor_meta, mes) {
-  return db.prepare(`
-    INSERT INTO metas_categoria (usuario_id, categoria_id, mes, valor_meta)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT(usuario_id, categoria_id, mes)
-    DO UPDATE SET valor_meta = excluded.valor_meta
-  `).run(usuario_id, categoria_id, mes, valor_meta);
+    return db.prepare(`
+                            INSERT INTO metas_categoria(usuario_id, categoria_id, mes, valor_meta) VALUES( ? ? , ? ) ON CONFLICT(usuario_id, categoria_id, mes) DO UPDATE SET valor_meta = excluded.valor_meta `).run(usuario_id, categoria_id, mes, valor_meta);
 }
 
 function getMetasComGasto(mes, usuario_id = null) {
-  return db.prepare(`
-    SELECT
-      c.nome as categoria,
-      m.valor_meta,
-      COALESCE(SUM(
-        CASE WHEN mov.tipo='saida' THEN mov.valor ELSE 0 END
-      ),0) as gasto_mes
-    FROM metas_categoria m
-    JOIN categorias c ON c.id = m.categoria_id
-      AND (c.usuario_id IS NULL OR c.usuario_id = ?)
-    LEFT JOIN movimentacoes mov
-      ON mov.categoria_id = c.id
-     AND substr(mov.data,1,7)=?
-     AND mov.usuario_id = ?
-    WHERE m.usuario_id = ?
-    GROUP BY c.id
-  `).all(usuario_id, mes, usuario_id, usuario_id);
+    return db.prepare(`
+                            SELECT c.nome as categoria,
+                            m.valor_meta,
+                            COALESCE(SUM(
+                                CASE WHEN mov.tipo = 'saida'
+                                THEN mov.valor ELSE 0 END
+                            ), 0) as gasto_mes FROM metas_categoria m JOIN categorias c ON c.id = m.categoria_id AND(c.usuario_id IS NULL OR c.usuario_id = ? ) LEFT JOIN movimentacoes mov ON mov.categoria_id = c.id AND substr(mov.data, 1, 7) = ?
+                            AND mov.usuario_id = ?
+                            WHERE m.usuario_id = ?
+                            GROUP BY c.id `).all(usuario_id, mes, usuario_id, usuario_id);
 }
 
 function getControleCartao(cartao_id, usuario_id) {
 
-  const cartao = db.prepare(`
-    SELECT id, nome, limite
-    FROM cartoes
-    WHERE id = ?
-      AND usuario_id = ?
-  `).get(cartao_id, usuario_id);
+    const cartao = db.prepare(`
+                            SELECT id, nome, limite FROM cartoes WHERE id = ?
+                            AND usuario_id = ?
+                            `).get(cartao_id, usuario_id);
 
-  if (!cartao) return null;
+    if (!cartao) return null;
 
-  const usado = db.prepare(`
-    SELECT COALESCE(SUM(valor),0) as total
-    FROM parcelas_cartao
-    WHERE cartao_id = ?
-      AND status = 'aberta'
-  `).get(cartao_id).total;
+    const usado = db.prepare(`
+                            SELECT COALESCE(SUM(valor), 0) as total FROM parcelas_cartao WHERE cartao_id = ?
+                            AND status = 'aberta'
+                            `).get(cartao_id).total;
 
-  const disponivel = cartao.limite - usado;
+    const disponivel = cartao.limite - usado;
 
-  const percentual = cartao.limite > 0
-    ? (usado / cartao.limite) * 100
-    : 0;
-
-  return {
-    nome: cartao.nome,
-    limite: cartao.limite,
-    usado,
-    disponivel,
-    percentual
-  };
-}
-
-function getPrevisaoCartao(cartao_id, usuario_id){
-
-  return db.prepare(`
-    SELECT
-      pc.mes_ref,
-      SUM(pc.valor) as total
-    FROM parcelas_cartao pc
-    JOIN cartoes ca ON ca.id = pc.cartao_id
-    WHERE pc.cartao_id = ?
-      AND pc.status = 'aberta'
-      AND pc.mes_ref >= strftime('%Y-%m','now')
-      AND ca.usuario_id = ?
-    GROUP BY pc.mes_ref
-    ORDER BY pc.mes_ref
-  `).all(cartao_id, usuario_id);
-
-}
-
-function getMesFaturaAtual(cartao_id, usuario_id){
-
-  const cartao = db.prepare(`
-    SELECT dia_fechamento
-    FROM cartoes
-    WHERE id = ?
-      AND usuario_id = ?
-  `).get(cartao_id, usuario_id);
-
-  const hoje = new Date();
-
-  const dia = hoje.getDate();
-
-  let mes = hoje.toISOString().slice(0,7);
-
-  if(dia > cartao.dia_fechamento){
-    mes = addMonths(mes,1);
-  }
-
-  return mes;
-}
-
-function getPrevisaoLimite(cartao_id, usuario_id){
-
-  const cartao = db.prepare(`
-    SELECT limite
-    FROM cartoes
-    WHERE id = ?
-      AND usuario_id = ?
-  `).get(cartao_id, usuario_id);
-
-  const parcelas = db.prepare(`
-    SELECT
-      mes_ref,
-      SUM(valor) as total
-    FROM parcelas_cartao
-    WHERE cartao_id = ?
-      AND status = 'aberta'
-    GROUP BY mes_ref
-    ORDER BY mes_ref
-  `).all(cartao_id);
-
-  let usado = parcelas.reduce((s,p)=> s + p.total,0);
-
-  return parcelas.map(p => {
-
-    usado -= p.total;
+    const percentual = cartao.limite > 0 ?
+        (usado / cartao.limite) * 100 :
+        0;
 
     return {
-      mes: p.mes_ref,
-      limite_liberado: cartao.limite - usado
+        nome: cartao.nome,
+        limite: cartao.limite,
+        usado,
+        disponivel,
+        percentual
     };
+}
 
-  });
+function getPrevisaoCartao(cartao_id, usuario_id) {
 
+    return db.prepare(`
+                            SELECT pc.mes_ref,
+                            SUM(pc.valor) as total FROM parcelas_cartao pc JOIN cartoes ca ON ca.id = pc.cartao_id WHERE pc.cartao_id = ?
+                            AND pc.status = 'aberta'
+                            AND pc.mes_ref >= strftime('%Y-%m', 'now') AND ca.usuario_id = ?
+                            GROUP BY pc.mes_ref ORDER BY pc.mes_ref `).all(cartao_id, usuario_id);
+
+}
+
+function getMesFaturaAtual(cartao_id, usuario_id) {
+
+    const cartao = db.prepare(`
+                            SELECT dia_fechamento FROM cartoes WHERE id = ?
+                            AND usuario_id = ?
+                            `).get(cartao_id, usuario_id);
+
+    const hoje = new Date();
+
+    const dia = hoje.getDate();
+
+    let mes = hoje.toISOString().slice(0, 7);
+
+    if (dia > cartao.dia_fechamento) {
+        mes = addMonths(mes, 1);
+    }
+
+    return mes;
+}
+
+function getPrevisaoLimite(cartao_id, usuario_id) {
+
+    const cartao = db.prepare(`
+                            SELECT limite FROM cartoes WHERE id = ?
+                            AND usuario_id = ?
+                            `).get(cartao_id, usuario_id);
+
+    const parcelas = db.prepare(`
+                            SELECT mes_ref,
+                            SUM(valor) as total FROM parcelas_cartao WHERE cartao_id = ?
+                            AND status = 'aberta'
+                            GROUP BY mes_ref ORDER BY mes_ref `).all(cartao_id);
+
+    let usado = parcelas.reduce((s, p) => s + p.total, 0);
+
+    return parcelas.map(p => {
+
+        usado -= p.total;
+
+        return {
+            mes: p.mes_ref,
+            limite_liberado: cartao.limite - usado
+        };
+
+    });
+
+}
+
+function diasDesde(isoLikeDate) {
+    if (!isoLikeDate) return 0;
+
+    const parsed = new Date(String(isoLikeDate).replace(" ", "T"));
+    if (Number.isNaN(parsed.getTime())) return 0;
+
+    const diffMs = Date.now() - parsed.getTime();
+    return Math.max(0, Math.floor(diffMs / 86400000));
+}
+
+function calcularRendimento(saldo, percentual, dias, cdiAnual) {
+    const p = Number(percentual || 0);
+    const d = Number(dias || 0);
+    const s = Number(saldo || 0);
+    const cdi = Number(cdiAnual || 0);
+
+    if (s <= 0 || p <= 0 || d <= 0 || cdi <= 0) {
+        return s;
+    }
+
+    const taxaDia = (p / 100) * cdi / 365;
+    return Number((s * Math.pow(1 + taxaDia, d)).toFixed(2));
+}
+
+function getPercentualAutomatico(caixinha) {
+    const instituicao = String(caixinha.instituicao || "").trim();
+    const produto = String(caixinha.produto || "Conta").trim();
+    const indexador = String(caixinha.rendimento_tipo || "CDI").toUpperCase();
+
+    if (!instituicao) return null;
+
+    const byProduto = db.prepare(`
+                            SELECT percentual, fonte, updated_at FROM rendimento_instituicoes WHERE ativo = 1 AND upper(instituicao) = upper( ? ) AND upper(produto) = upper( ? ) AND upper(indexador) = upper( ? ) LIMIT 1 `).get(instituicao, produto, indexador);
+
+    if (byProduto) return byProduto;
+
+    return db.prepare(`
+                            SELECT percentual, fonte, updated_at FROM rendimento_instituicoes WHERE ativo = 1 AND upper(instituicao) = upper( ? ) AND upper(indexador) = upper( ? ) ORDER BY updated_at DESC LIMIT 1 `).get(instituicao, indexador);
+}
+
+function getCaixinhas(usuario_id) {
+    const cdiAnual = getTaxaReferencia("CDI_ANUAL", DEFAULT_CDI_ANUAL);
+
+    const rows = db.prepare(`
+                            SELECT *
+                            FROM caixinhas WHERE usuario_id = ?
+                            ORDER BY datetime(created_at) DESC, id DESC `).all(usuario_id);
+
+    return rows.map((c) => {
+        const dias = diasDesde(c.created_at);
+        const auto = Number(c.auto_percentual || 0) === 1;
+        const autoTaxa = auto ? getPercentualAutomatico(c) : null;
+        const percentualAplicado = autoTaxa ? Number(autoTaxa.percentual) : Number(c.rendimento_percentual || 0);
+        const saldoAtualizado = calcularRendimento(c.saldo, percentualAplicado, dias, cdiAnual);
+
+        return {
+            ...c,
+            percentual_aplicado: percentualAplicado,
+            percentual_origem: autoTaxa ? "automatico" : "manual",
+            percentual_fonte: autoTaxa ?.fonte || null,
+            percentual_updated_at: autoTaxa ?.updated_at || null,
+            cdi_anual: cdiAnual,
+            dias_rendimento: dias,
+            saldo_atualizado: saldoAtualizado,
+            rendimento_estimado: Number((saldoAtualizado - Number(c.saldo || 0)).toFixed(2))
+        };
+    });
+}
+
+function addCaixinha(
+    usuario_id,
+    nome,
+    objetivo,
+    rendimento_tipo,
+    rendimento_percentual,
+    instituicao,
+    produto,
+    auto_percentual
+) {
+    return db.prepare(`
+                            INSERT INTO caixinhas(
+                                nome, saldo, objetivo, rendimento_tipo, rendimento_percentual,
+                                instituicao, produto, auto_percentual, usuario_id
+                            ) VALUES( ? , 0, ? ? , ? ? , ? )
+                            `).run(
+        String(nome || "").trim(),
+        objetivo != null && objetivo !== "" ? Number(objetivo) : null,
+        rendimento_tipo ? String(rendimento_tipo).trim() : null,
+        rendimento_percentual != null && rendimento_percentual !== "" ? Number(rendimento_percentual) : null,
+        instituicao ? String(instituicao).trim() : null,
+        produto ? String(produto).trim() : null,
+        auto_percentual ? 1 : 0,
+        usuario_id
+    );
+}
+
+function updateCaixinha(
+    id,
+    usuario_id,
+    nome,
+    objetivo,
+    rendimento_tipo,
+    rendimento_percentual,
+    instituicao,
+    produto,
+    auto_percentual
+) {
+    return db.prepare(`
+                            UPDATE caixinhas SET nome = ? ,
+                            objetivo = ? ,
+                            rendimento_tipo = ? ,
+                            rendimento_percentual = ? ,
+                            instituicao = ? ,
+                            produto = ? ,
+                            auto_percentual = ?
+                            WHERE id = ?
+                            AND usuario_id = ?
+                            `).run(
+        String(nome || "").trim(),
+        objetivo != null && objetivo !== "" ? Number(objetivo) : null,
+        rendimento_tipo ? String(rendimento_tipo).trim() : null,
+        rendimento_percentual != null && rendimento_percentual !== "" ? Number(rendimento_percentual) : null,
+        instituicao ? String(instituicao).trim() : null,
+        produto ? String(produto).trim() : null,
+        auto_percentual ? 1 : 0,
+        Number(id),
+        usuario_id
+    );
+}
+
+function deleteCaixinha(id, usuario_id) {
+    const tx = db.transaction(() => {
+        db.prepare(`
+                            DELETE FROM caixinha_movimentacoes WHERE caixinha_id = ?
+                            AND usuario_id = ?
+                            `).run(Number(id), usuario_id);
+
+        return db.prepare(`
+                            DELETE FROM caixinhas WHERE id = ?
+                            AND usuario_id = ?
+                            `).run(Number(id), usuario_id);
+    });
+
+    return tx();
+}
+
+function movimentarCaixinha(caixinha_id, usuario_id, valor, tipo, data) {
+    const valorNum = Number(valor);
+    if (!Number.isFinite(valorNum) || valorNum <= 0) {
+        return { ok: false, erro: "Valor invÃ¡lido" };
+    }
+
+    if (tipo !== "deposito" && tipo !== "saque") {
+        return { ok: false, erro: "Tipo invÃ¡lido" };
+    }
+
+    const caixinha = db.prepare(`
+                            SELECT id, saldo FROM caixinhas WHERE id = ?
+                            AND usuario_id = ?
+                            `).get(Number(caixinha_id), usuario_id);
+
+    if (!caixinha) {
+        return { ok: false, erro: "Caixinha nÃ£o encontrada" };
+    }
+
+    if (tipo === "deposito") {
+        const saldoDisponivel = Number(getSaldoDisponivelParaCaixinhas(usuario_id) || 0);
+        if (saldoDisponivel < valorNum) {
+            return {
+                ok: false,
+                erro: "Saldo insuficiente para depositar na caixinha",
+                saldo_disponivel: Number(saldoDisponivel.toFixed(2))
+            };
+        }
+    }
+
+    const delta = tipo === "deposito" ? valorNum : -valorNum;
+    const novoSaldo = Number(caixinha.saldo || 0) + delta;
+
+    if (novoSaldo < 0) {
+        return { ok: false, erro: "Saldo insuficiente na caixinha" };
+    }
+
+    const dataMov = data || new Date().toISOString().slice(0, 10);
+    const dataHoraMov = new Date().toISOString();
+    const descricaoTransferencia =
+        tipo === "deposito" ?
+        `
+                            TransferÃªncia para caixinha : $ { caixinha.id }
+                            ` :
+        `
+                            Resgate da caixinha : $ { caixinha.id }
+                            `;
+    const tipoMovPrincipal = tipo === "deposito" ? "saida" : "entrada";
+
+    const tx = db.transaction(() => {
+        db.prepare(`
+                            UPDATE caixinhas SET saldo = ?
+                            WHERE id = ?
+                            AND usuario_id = ?
+                            `).run(Number(novoSaldo.toFixed(2)), Number(caixinha_id), usuario_id);
+
+        db.prepare(`
+                            INSERT INTO caixinha_movimentacoes(caixinha_id, valor, tipo, data, data_hora, usuario_id) VALUES( ? ? , ? ? )
+                            `).run(Number(caixinha_id), valorNum, tipo, dataMov, dataHoraMov, usuario_id);
+
+        // MantÃ©m coerÃªncia do saldo geral registrando transferÃªncia entre conta principal e caixinha.
+        db.prepare(`
+                            INSERT INTO movimentacoes(descricao, valor, tipo, origem, categoria_id, data, usuario_id) VALUES( ? ? , 'caixinha', NULL, ? ? )
+                            `).run(descricaoTransferencia, valorNum, tipoMovPrincipal, dataMov, usuario_id);
+    });
+
+    tx();
+
+    return {
+        ok: true,
+        saldo: Number(novoSaldo.toFixed(2))
+    };
+}
+
+function getCaixinhaMovimentacoes(caixinha_id, usuario_id) {
+    return db.prepare(`
+                            SELECT id, caixinha_id, valor, tipo, data, data_hora FROM caixinha_movimentacoes WHERE caixinha_id = ?
+                            AND usuario_id = ?
+                            ORDER BY date(data) DESC, id DESC `).all(Number(caixinha_id), usuario_id);
+}
+
+function getCaixinhasEvolucao(periodo, usuario_id) {
+    const periodoNormalizado = ["diario", "semanal", "mensal", "anual"].includes(periodo) ?
+        periodo :
+        "mensal";
+
+    const caixinhas = db.prepare(`
+                            SELECT id, nome, saldo FROM caixinhas WHERE usuario_id = ?
+                            ORDER BY nome `).all(usuario_id);
+
+    if (!caixinhas.length) return [];
+
+    const movimentos = db.prepare(`
+                            SELECT caixinha_id, valor, tipo, data, data_hora FROM caixinha_movimentacoes WHERE usuario_id = ?
+                            ORDER BY COALESCE(data_hora, data) ASC, id ASC `).all(usuario_id).map((m) => {
+        const raw = m.data_hora || (m.data ? `
+                            $ { m.data }
+                            T12 : 00 : 00 ` : null);
+        const dt = raw ? new Date(String(raw).replace(" ", "T")) : null;
+
+        return {
+            caixinha_id: Number(m.caixinha_id),
+            delta: m.tipo === "saque" ? -Number(m.valor || 0) : Number(m.valor || 0),
+            dt: dt && !Number.isNaN(dt.getTime()) ? dt : null
+        };
+    }).filter((m) => m.dt);
+
+    const now = new Date();
+    const buckets = [];
+
+    if (periodoNormalizado === "diario") {
+        const ini = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+
+        for (let h = 0; h < 24; h++) {
+            const start = new Date(ini);
+            start.setHours(h, 0, 0, 0);
+            const end = new Date(start);
+            end.setHours(h + 1, 0, 0, 0);
+
+            buckets.push({
+                idx: h,
+                label: `
+                            $ { String(h).padStart(2, "0") }
+                            h `,
+                start,
+                end
+            });
+        }
+    }
+
+    if (periodoNormalizado === "semanal") {
+        const diaSemana = now.getDay();
+        const desloc = diaSemana === 0 ? -6 : 1 - diaSemana;
+        const segunda = new Date(now.getFullYear(), now.getMonth(), now.getDate() + desloc, 0, 0, 0, 0);
+        const labels = ["Seg", "Ter", "Qua", "Qui", "Sex"];
+
+        for (let i = 0; i < 5; i++) {
+            const start = new Date(segunda);
+            start.setDate(segunda.getDate() + i);
+            const end = new Date(start);
+            end.setDate(start.getDate() + 1);
+
+            buckets.push({ idx: i, label: labels[i], start, end });
+        }
+    }
+
+    if (periodoNormalizado === "mensal") {
+        const ano = now.getFullYear();
+        const mes = now.getMonth();
+        const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+        const semanas = Math.ceil(diasNoMes / 7);
+
+        for (let s = 0; s < semanas; s++) {
+            const startDia = s * 7 + 1;
+            const endDia = Math.min((s + 1) * 7 + 1, diasNoMes + 1);
+            const start = new Date(ano, mes, startDia, 0, 0, 0, 0);
+            const end = new Date(ano, mes, endDia, 0, 0, 0, 0);
+
+            buckets.push({ idx: s, label: `
+                            Sem $ { s + 1 }
+                            `, start, end });
+        }
+    }
+
+    if (periodoNormalizado === "anual") {
+        const ano = now.getFullYear();
+        const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+        for (let m = 0; m < 12; m++) {
+            const start = new Date(ano, m, 1, 0, 0, 0, 0);
+            const end = new Date(ano, m + 1, 1, 0, 0, 0, 0);
+            buckets.push({ idx: m, label: labels[m], start, end });
+        }
+    }
+
+    if (!buckets.length) return [];
+
+    const rangeStart = buckets[0].start;
+    const result = [];
+
+    for (const c of caixinhas) {
+        const movCaixinha = movimentos.filter((m) => m.caixinha_id === Number(c.id));
+        const deltaDentroRange = movCaixinha
+            .filter((m) => m.dt >= rangeStart)
+            .reduce((acc, m) => acc + Number(m.delta || 0), 0);
+
+        let saldoRodando = Number(c.saldo || 0) - Number(deltaDentroRange || 0);
+
+        for (const b of buckets) {
+            const deltaBucket = movCaixinha
+                .filter((m) => m.dt >= b.start && m.dt < b.end)
+                .reduce((acc, m) => acc + Number(m.delta || 0), 0);
+
+            saldoRodando += deltaBucket;
+
+            result.push({
+                caixinha_id: Number(c.id),
+                caixinha_nome: c.nome,
+                periodo: b.label,
+                bucket_idx: b.idx,
+                saldo_acumulado: Number(saldoRodando.toFixed(2))
+            });
+        }
+    }
+
+    return result;
 }
 
 module.exports = {
 
-  getMovimentacoes,
-  criarMovimentacao,
-  editarMovimentacao,
-  deletarMovimentacao,
- 
-  getCategorias,
-  addCategoria,
-  getResumo,
+    getMovimentacoes,
+    criarMovimentacao,
+    editarMovimentacao,
+    deletarMovimentacao,
 
-  relatorioPorCategoria,
-  getRelatorioCategorias,
-  getPrevisaoMes,
+    getCategorias,
+    addCategoria,
+    getResumo,
 
-  getRecorrencias,
-  addRecorrencia,
-  updateRecorrencia,
-  deleteRecorrencia,
+    relatorioPorCategoria,
+    getRelatorioCategorias,
+    getPrevisaoMes,
 
-  resumoRecorrencias,
-  gerarRecorrencias,
-  getPrevisaoCartao,
-  addCartao,
-  updateCartao,
-  deleteCartao,
-  getCartoes,
-  criarCompraCartao,
-  getFaturaCartao,
-  getFaturasMes,
-  getPrevisao,
-  setParcelaStatus,
-  deleteCompraCartao,
+    getRecorrencias,
+    addRecorrencia,
+    updateRecorrencia,
+    deleteRecorrencia,
 
-  getSaldoAtual,
-  getLimiteCartao,
-  getDashboard,
-  setMetaCategoria,
-  getMetasComGasto,
-  getControleCartao,
-  setRecorrenciaAtiva,
-  inserirMovimentacao,
-  updateMovimentacao,
-  getMesFaturaAtual,
-  getPrevisaoLimite,
-  formatMes,
+    resumoRecorrencias,
+    gerarRecorrencias,
+    getPrevisaoCartao,
+    addCartao,
+    updateCartao,
+    deleteCartao,
+    getCartoes,
+    criarCompraCartao,
+    getFaturaCartao,
+    getFaturasMes,
+    getPrevisao,
+    setParcelaStatus,
+    deleteCompraCartao,
+
+    getSaldoAtual,
+    getSaldoDisponivelParaCaixinhas,
+    getLimiteCartao,
+    getDashboard,
+    setMetaCategoria,
+    getMetasComGasto,
+    getControleCartao,
+    setRecorrenciaAtiva,
+    inserirMovimentacao,
+    updateMovimentacao,
+    getMesFaturaAtual,
+    getPrevisaoLimite,
+    formatMes,
+
+    getCaixinhas,
+    addCaixinha,
+    updateCaixinha,
+    deleteCaixinha,
+    movimentarCaixinha,
+    getCaixinhaMovimentacoes,
+    getCaixinhasEvolucao,
 
 };

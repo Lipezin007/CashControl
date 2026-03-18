@@ -31,6 +31,7 @@
 
   <div class="tabs">
     <button class="tab active" data-tab="transacoes">Transações</button>
+    <button class="tab" data-tab="caixinhas">Caixinhas</button>
     <button class="tab" data-tab="aba-dashboard">Dashboard</button>
     <button class="tab" data-tab="graficos">Gráficos</button>
   </div>
@@ -208,6 +209,62 @@
 
   </div>
 
+  <div class="tab-content" id="caixinhas">
+    <section class="card wide">
+      <h2>Caixinhas</h2>
+
+      <form id="formCaixinha" class="caixinha-form">
+        <input id="caixinhaId" type="hidden">
+
+        <div>
+          <label>Nome</label>
+          <input id="caixinhaNome" placeholder="Ex: Viagem" required>
+        </div>
+
+        <div>
+          <label>Objetivo (R$)</label>
+          <input id="caixinhaObjetivo" type="number" step="0.01" placeholder="Opcional">
+        </div>
+
+        <div>
+          <label>Rendimento</label>
+          <select id="caixinhaRendimentoTipo">
+            <option value="CDI">CDI</option>
+            <option value="CDB">CDB</option>
+            <option value="Poupanca">Poupança</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Instituição</label>
+          <input id="caixinhaInstituicao" placeholder="Ex: Nubank">
+        </div>
+
+        <div>
+          <label>Produto</label>
+          <input id="caixinhaProduto" placeholder="Ex: Conta">
+        </div>
+
+        <div>
+          <label>% do índice</label>
+          <input id="caixinhaRendimentoPercentual" type="number" step="0.01" value="100">
+        </div>
+
+        <div class="caixinha-auto-check">
+          <label>
+            <input id="caixinhaAutoPercentual" type="checkbox">
+            Usar taxa automática por instituição
+          </label>
+        </div>
+
+        <button type="submit" class="salvar">+ Nova Caixinha</button>
+        <button type="button" id="btnSyncRendimento" class="btn-secundario">Atualizar taxas agora</button>
+      </form>
+
+      <div id="listaCaixinhas" class="caixinhas-grid"></div>
+    </section>
+  </div>
+
   <div class="tab-content" id="aba-dashboard">
 
   <!-- PREVISÃO -->
@@ -241,6 +298,22 @@
 <section class="card wide">
   <h2>Evolução Diária</h2>
   <canvas id="graficoDiario" height="100"></canvas>
+</section>
+
+<section class="card wide">
+  <div class="grafico-topo">
+    <h2>Evolução das Caixinhas</h2>
+    <div class="grafico-filtro">
+      <label for="caixinhaPeriodo">Período</label>
+      <select id="caixinhaPeriodo">
+        <option value="diario">Diária</option>
+        <option value="semanal">Semanal</option>
+        <option value="mensal" selected>Mensal</option>
+        <option value="anual">Anual</option>
+      </select>
+    </div>
+  </div>
+  <canvas id="chartCaixinhas" height="100"></canvas>
 </section>
   </div>
 
@@ -350,7 +423,6 @@
 
 </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="app.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="/favicon.ico">
 <link rel="apple-touch-icon" href="/favicon.ico">
@@ -383,6 +455,6 @@
   </div>
 </div>
 
-<script src="app.js"></script>
+<script src="app.js?v=20260318-3"></script>
 </body>
 </html>

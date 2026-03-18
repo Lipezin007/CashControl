@@ -15,6 +15,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
+const rendimentoService = require("./rendimentoService");
 
 const SECRET = "cashcontrol_super_secret";
 const RESET_TOKEN_TTL_MS = 1000 * 60 * 15;
@@ -411,6 +412,138 @@ app.get("/api/categorias", auth, (req,res)=>{
 app.post("/api/categorias", auth, (req,res)=>{
   const {nome} = req.body;
   res.json(queries.addCategoria(req.user.id, nome));
+});
+
+// ===== CAIXINHAS =====
+app.get("/api/caixinhas", auth, (req, res) => {
+  res.json(queries.getCaixinhas(req.user.id));
+});
+
+app.post("/api/caixinhas", auth, (req, res) => {
+  const {
+    nome,
+    objetivo,
+    rendimento_tipo,
+    rendimento_percentual,
+    instituicao,
+    produto,
+    auto_percentual
+  } = req.body;
+
+  if (!String(nome || "").trim()) {
+    return res.status(400).json({ ok: false, erro: "Nome é obrigatório" });
+  }
+
+  const result = queries.addCaixinha(
+    req.user.id,
+    nome,
+    objetivo,
+    rendimento_tipo,
+    rendimento_percentual,
+    instituicao,
+    produto,
+    !!auto_percentual
+  );
+
+  return res.json({ ok: true, id: Number(result.lastInsertRowid) });
+});
+
+app.put("/api/caixinhas/:id", auth, (req, res) => {
+  const {
+    nome,
+    objetivo,
+    rendimento_tipo,
+    rendimento_percentual,
+    instituicao,
+    produto,
+    auto_percentual
+  } = req.body;
+
+  if (!String(nome || "").trim()) {
+    return res.status(400).json({ ok: false, erro: "Nome é obrigatório" });
+  }
+
+  const result = queries.updateCaixinha(
+    req.params.id,
+    req.user.id,
+    nome,
+    objetivo,
+    rendimento_tipo,
+    rendimento_percentual,
+    instituicao,
+    produto,
+    !!auto_percentual
+  );
+
+  if (!result.changes) {
+    return res.status(404).json({ ok: false, erro: "Caixinha não encontrada" });
+  }
+
+  return res.json({ ok: true });
+});
+
+app.delete("/api/caixinhas/:id", auth, (req, res) => {
+  const result = queries.deleteCaixinha(req.params.id, req.user.id);
+
+  if (!result.changes) {
+    return res.status(404).json({ ok: false, erro: "Caixinha não encontrada" });
+  }
+
+  return res.json({ ok: true });
+});
+
+app.get("/api/caixinhas/:id/movimentacoes", auth, (req, res) => {
+  res.json(queries.getCaixinhaMovimentacoes(req.params.id, req.user.id));
+});
+
+app.get("/api/caixinhas/evolucao", auth, (req, res) => {
+  const periodo = String(req.query.periodo || "mensal").toLowerCase();
+  const permitidos = ["diario", "semanal", "mensal", "anual"];
+
+  if (!permitidos.includes(periodo)) {
+    return res.status(400).json({ ok: false, erro: "periodo inválido" });
+  }
+
+  return res.json(queries.getCaixinhasEvolucao(periodo, req.user.id));
+});
+
+app.post("/api/caixinhas/:id/deposito", auth, (req, res) => {
+  const { valor, data } = req.body;
+  const result = queries.movimentarCaixinha(req.params.id, req.user.id, valor, "deposito", data);
+
+  if (!result.ok) {
+    return res.status(400).json(result);
+  }
+
+  return res.json(result);
+});
+
+app.post("/api/caixinhas/:id/saque", auth, (req, res) => {
+  const { valor, data } = req.body;
+  const result = queries.movimentarCaixinha(req.params.id, req.user.id, valor, "saque", data);
+
+  if (!result.ok) {
+    return res.status(400).json(result);
+  }
+
+  return res.json(result);
+});
+
+app.get("/api/rendimento/status", auth, (req, res) => {
+  return res.json(rendimentoService.getTaxasStatus());
+});
+
+app.get("/api/rendimento/instituicoes", auth, (req, res) => {
+  return res.json(rendimentoService.getRendimentoInstituicoes(req.query.indexador || null));
+});
+
+app.post("/api/rendimento/atualizar", auth, async (req, res) => {
+  try {
+    const result = await rendimentoService.atualizarTudoRendimento();
+    return res.json({ ok: true, ...result });
+  } catch (err) {
+    return res.status(500).json({ ok: false, erro: err.message });
+  }
 });
 
 app.get("/api/relatorio-categorias", auth, (req, res) => {
@@ -949,6 +1082,7 @@ app.get("/api/diario", auth, (req, res) => {
 //temporarios
 
 garantirCategoriasPadrao();
+rendimentoService.iniciarAgendadorRendimento();
 app.listen(3000, () => {
   console.log("🚀 Servidor rodando em http://localhost:3000");
 });
