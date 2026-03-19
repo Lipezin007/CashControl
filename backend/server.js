@@ -483,13 +483,15 @@ app.put("/api/caixinhas/:id", auth, (req, res) => {
 });
 
 app.delete("/api/caixinhas/:id", auth, (req, res) => {
-  const result = queries.deleteCaixinha(req.params.id, req.user.id);
-
-  if (!result.changes) {
-    return res.status(404).json({ ok: false, erro: "Caixinha não encontrada" });
+  try {
+    const result = queries.deleteCaixinha(req.params.id, req.user.id);
+    return res.json(result);
+  } catch (err) {
+    return res.status(404).json({
+      ok: false,
+      erro: err.message || "Caixinha não encontrada"
+    });
   }
-
-  return res.json({ ok: true });
 });
 
 app.get("/api/caixinhas/:id/movimentacoes", auth, (req, res) => {
@@ -813,30 +815,33 @@ app.get("/api/cartoes/:id/controle", auth, (req,res)=>{
 app.get("/api/mensal", auth, (req, res) => {
   const ano = req.query.ano;
 
+  if (!ano || !/^\d{4}$/.test(ano)) {
+    return res.status(400).json({ erro: "Ano inválido" });
+  }
+
   const dados = db.prepare(`
     SELECT
-  mes_num,
-  SUM(entradas) as entradas,
-  SUM(saidas) as saidas
-FROM (
-
-  SELECT
-    strftime('%m', data) as mes_num,
-    CASE WHEN tipo='entrada' THEN valor ELSE 0 END as entradas,
-    CASE WHEN tipo='saida' THEN valor ELSE 0 END as saidas
-  FROM movimentacoes
-  WHERE strftime('%Y', data)=?
-    AND usuario_id = ?
-
-)
-GROUP BY mes_num
+      mes_num,
+      SUM(entradas) as entradas,
+      SUM(saidas) as saidas
+    FROM (
+      SELECT
+        strftime('%m', data) as mes_num,
+        CASE WHEN tipo = 'entrada' THEN valor ELSE 0 END as entradas,
+        CASE WHEN tipo = 'saida' THEN valor ELSE 0 END as saidas
+      FROM movimentacoes
+      WHERE strftime('%Y', data) = ?
+        AND usuario_id = ?
+    )
+    GROUP BY mes_num
+    ORDER BY mes_num
   `).all(ano, req.user.id);
 
   const mapa = {};
   dados.forEach(d => {
     mapa[d.mes_num] = {
-      entradas: d.entradas || 0,
-      saidas: d.saidas || 0
+      entradas: Number(d.entradas) || 0,
+      saidas: Number(d.saidas) || 0
     };
   });
 
@@ -1038,8 +1043,12 @@ app.get("/api/cartoes/:id/previsao", auth, (req,res)=>{
 });
 
 app.get("/api/diario", auth, (req, res) => {
-  const mes = req.query.mes; // formato: 2026-03
+  const mes = req.query.mes;
   const usuario_id = req.user.id;
+
+  if (!mes || !/^\d{4}-\d{2}$/.test(mes)) {
+    return res.status(400).json({ erro: "Mes invalido. Use YYYY-MM" });
+  }
 
   const dados = db.prepare(`
     SELECT
@@ -1050,18 +1059,18 @@ app.get("/api/diario", auth, (req, res) => {
     WHERE substr(data,1,7) = ?
       AND usuario_id = ?
     GROUP BY dia
+    ORDER BY dia
   `).all(mes, usuario_id);
 
   const mapa = {};
   dados.forEach(d => {
     mapa[d.dia] = {
-      entradas: d.entradas || 0,
-      saidas: d.saidas || 0
+      entradas: Number(d.entradas) || 0,
+      saidas: Number(d.saidas) || 0
     };
   });
 
-  // pega quantidade de dias do mês
-  const [ano, mesNum] = mes.split("-");
+  const [ano, mesNum] = mes.split("-").map(Number);
   const diasNoMes = new Date(ano, mesNum, 0).getDate();
 
   const resultado = [];

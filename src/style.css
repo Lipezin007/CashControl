@@ -112,6 +112,8 @@ body:not(.login)::after {
 }
 
 .tab {
+  flex: 1 1 0;
+  min-width: 130px;
   padding: 10px 20px;
   border: none;
   background: #0f172a;
@@ -119,6 +121,7 @@ body:not(.login)::after {
   border-radius: 10px;
   cursor: pointer;
   transition: 0.2s;
+  text-align: center;
 }
 
 .tab.active {
@@ -228,6 +231,9 @@ body:not(.login)::after {
 
 .small { grid-column: span 3; }
 .wide { grid-column: span 6; }
+
+/* Caixinhas deve ocupar toda a largura para ficar mais legível */
+#caixinhas .card.wide { grid-column: span 12; }
 
 .card:not(.small):not(.wide) {
   grid-column: span 4;

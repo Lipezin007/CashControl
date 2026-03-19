@@ -22,6 +22,7 @@ const caixinhaInstituicaoInput = document.querySelector("#caixinhaInstituicao");
 const caixinhaProdutoInput = document.querySelector("#caixinhaProduto");
 const caixinhaAutoPercentualInput = document.querySelector("#caixinhaAutoPercentual");
 const btnSyncRendimento = document.querySelector("#btnSyncRendimento");
+const btnSalvarCaixinha = document.querySelector("#formCaixinha button.salvar");
 
 const filtroMes = document.querySelector("#filtroMes");
 
@@ -131,7 +132,7 @@ async function carregarGraficoMensal() {
                     tension: 0.3
                 },
                 {
-                    label: "SaÃ­das",
+                    label: "Saí­das",
                     data: saidas,
                     borderColor: "#ef4444",
                     backgroundColor: "rgba(239,68,68,0.2)",
@@ -302,7 +303,7 @@ async function carregarCartoesNoForm() {
     const cartoes = await api("/api/cartoes").then(r => r.json());
 
     cartaoSelect.innerHTML =
-        `<option value="">Selecione o cartÃ£o</option>` +
+        `<option value="">Selecione o cartão</option>` +
         cartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
 }
 
@@ -316,9 +317,9 @@ async function carregarDashboard() {
 
     dashboardDiv.innerHTML = `
     <p><b>Saldo atual:</b> ${money(d.saldo)}</p>
-    <p><b>Entradas do mÃªs:</b> ${money(d.entradas)}</p>
-    <p><b>SaÃ­das do mÃªs:</b> ${money(d.saidas)}</p>
-    <p><b>Fatura do cartÃ£o:</b> ${money(d.fatura)}</p>
+    <p><b>Entradas do mês:</b> ${money(d.entradas)}</p>
+    <p><b>Saídas do mês:</b> ${money(d.saidas)}</p>
+    <p><b>Fatura do cartão:</b> ${money(d.fatura)}</p>
   `;
 }
 
@@ -417,13 +418,16 @@ async function modalInput(titulo, texto, confirmarTexto = "Confirmar") {
 }
 
 function getCaixinhaIcone(nome = "") {
-    const n = String(nome).toLowerCase();
-    if (n.includes("viagem") || n.includes("ferias")) return "âœˆ";
-    if (n.includes("carro") || n.includes("moto")) return "ðŸš—";
-    if (n.includes("casa") || n.includes("apart")) return "ðŸ ";
-    if (n.includes("estudo") || n.includes("curso")) return "ðŸ“š";
-    if (n.includes("emerg") || n.includes("reserva")) return "ðŸ›Ÿ";
-    return "ðŸ’°";
+  const n = String(nome).toLowerCase();
+
+  if (n.includes("viagem") || n.includes("ferias")) return "✈️";
+  if (n.includes("carro") || n.includes("moto")) return "🚗";
+  if (n.includes("casa") || n.includes("apart")) return "🏠";
+  if (n.includes("estudo") || n.includes("curso")) return "📚";
+  if (n.includes("emerg") || n.includes("reserva")) return "🛟";
+  if (n.includes("iphone") || n.includes("celular")) return "📱";
+
+  return "💰";
 }
 
 function getClasseProgresso(perc) {
@@ -449,6 +453,7 @@ function resetFormCaixinha() {
     if (caixinhaAutoPercentualInput) {
         caixinhaAutoPercentualInput.checked = false;
     }
+    if (btnSalvarCaixinha) btnSalvarCaixinha.textContent = "+ Nova Caixinha";
 }
 
 async function carregarCaixinhas() {
@@ -478,15 +483,15 @@ async function carregarCaixinhas() {
       <article class="caixinha-card">
         <div class="caixinha-topo">
           <h3><span class="caixinha-icone">${icone}</span> ${c.nome}</h3>
-          <span class="caixinha-tag">${c.rendimento_tipo || "Sem Ã­ndice"}</span>
+          <span class="caixinha-tag">${c.rendimento_tipo || "Sem í­ndice"}</span>
         </div>
 
         <p><b>Saldo:</b> ${money(saldoAtualizado)}</p>
         <p><b>Base:</b> ${money(saldo)}</p>
         <p><b>Rendimento simulado:</b> ${money(rendimento)} em ${Number(c.dias_rendimento || 0)} dias</p>
-        <p><b>Taxa aplicada:</b> ${Number(c.percentual_aplicado || 0).toFixed(2)}% do ${c.rendimento_tipo || "Ã­ndice"} (${c.percentual_origem === "automatico" ? "auto" : "manual"})</p>
-        <p><b>InstituiÃ§Ã£o:</b> ${c.instituicao || "-"} ${c.produto ? `(${c.produto})` : ""}</p>
-        <p><b>Meta:</b> ${objetivo > 0 ? money(objetivo) : "NÃ£o definida"}</p>
+        <p><b>Taxa aplicada:</b> ${Number(c.percentual_aplicado || 0).toFixed(2)}% do ${c.rendimento_tipo || "í­ndice"} (${c.percentual_origem === "automatico" ? "auto" : "manual"})</p>
+        <p><b>Instituição:</b> ${c.instituicao || "-"} ${c.produto ? `(${c.produto})` : ""}</p>
+        <p><b>Meta:</b> ${objetivo > 0 ? money(objetivo) : "Não definida"}</p>
 
         ${objetivo > 0 ? `
           <div class="caixinha-progresso ${classeProgresso}">
@@ -508,7 +513,7 @@ async function carregarCaixinhas() {
 
 async function carregarCategorias() {
   const cats = await api("/api/categorias").then(r => r.json());
-console.log("CATEGORIAS:", cats);
+
 
   categoriaSelect.innerHTML = cats.map(c =>
     `<option value="${c.id}">${c.nome}</option>`
@@ -553,7 +558,7 @@ lista?.addEventListener("click", async (e) => {
   const id = Number(btn.dataset.id);
 
   if (action === "del") {
-    const ok = await modalConfirmar("Excluir transaÃ§Ã£o", "Excluir essa transaÃ§Ã£o?", "Excluir");
+    const ok = await modalConfirmar("Excluir transação", "Excluir essa transação?", "Excluir");
     if (!ok) return;
     await api(`/api/movimentacoes/${id}`, { method: "DELETE" });
     await refreshTudo();
@@ -704,9 +709,10 @@ listaCaixinhas?.addEventListener("click", async (e) => {
 
     const entrada = await modalInput(
       action === "deposito" ? "Depositar na caixinha" : "Sacar da caixinha",
-      "Informe o valor da movimentaÃ§Ã£o",
+      "Informe o valor da movimentação",
       "Confirmar"
     );
+
     valor = entrada == null ? null : Number(String(entrada).replace(",", "."));
 
     if (!valor || !Number.isFinite(valor) || valor <= 0) return;
@@ -718,11 +724,10 @@ listaCaixinhas?.addEventListener("click", async (e) => {
         body: JSON.stringify({ valor })
       });
 
-      // Atualiza tambÃ©m o saldo/resumo da conta principal apÃ³s transferÃªncia.
       await refreshTudo();
     } catch (err) {
       const msg = String(err.message || "");
-      await modalAviso("NÃ£o foi possÃ­vel concluir", msg || "Erro ao movimentar caixinha.");
+      await modalAviso("Não foi possível concluir", msg || "Erro ao movimentar caixinha.");
     }
 
     return;
@@ -741,23 +746,43 @@ listaCaixinhas?.addEventListener("click", async (e) => {
     caixinhaInstituicaoInput.value = c.instituicao || "";
     caixinhaProdutoInput.value = c.produto || "Conta";
     caixinhaAutoPercentualInput.checked = Number(c.auto_percentual || 0) === 1;
-    caixinhaNomeInput.focus();
+
+    if (btnSalvarCaixinha) btnSalvarCaixinha.textContent = "Salvar";
     return;
   }
 
   if (action === "excluir") {
-    const confirmar = await modalConfirmar(
-      "Excluir caixinha",
-      "Deseja excluir a caixinha e todas as movimentaÃ§Ãµes?",
-      "Excluir"
-    );
+  const caixinhas = await api("/api/caixinhas").then(r => r.json());
+  const caixinha = caixinhas.find(x => Number(x.id) === id);
 
-    if (!confirmar) return;
-
-    await api(`/api/caixinhas/${id}`, { method: "DELETE" });
-    await carregarCaixinhas();
-    resetFormCaixinha();
+  if (!caixinha) {
+    await modalAviso("Erro", "Caixinha não encontrada.");
+    return;
   }
+
+  const confirmar = await abrirModal({
+    titulo: "Excluir caixinha",
+    texto: `O saldo de ${Number(caixinha.saldo || 0).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    })} vai voltar para o saldo principal. Deseja excluir a caixinha?`
+  });
+
+  if (!confirmar) return;
+
+  const resp = await api(`/api/caixinhas/${id}`, { method: "DELETE" });
+ 
+
+  const resumoAntes = await api("/api/resumo").then(r => r.json());
+  
+
+  resetFormCaixinha();
+  await refreshTudo();
+
+  const resumoDepois = await api("/api/resumo").then(r => r.json());
+  return;
+  
+}
 });
 
 btnSyncRendimento?.addEventListener("click", async () => {
@@ -767,12 +792,12 @@ btnSyncRendimento?.addEventListener("click", async () => {
   if (typeof abrirModal === "function") {
     await abrirModal({
       titulo: "Taxas atualizadas",
-      texto: "CDI e taxas de instituiÃ§Ãµes foram sincronizados.",
+      texto: "CDI e taxas de instituições foram sincronizados.",
       mostrarCancelar: false,
       fecharAoClicarFora: true
     });
   }
-});
+}); 
 
 (async function init() {
 
@@ -814,8 +839,8 @@ async function carregarResumoRecorrencias() {
   if (!resumoRec) return;
   const r = await api("/api/recorrencias/resumo").then(x => x.json());
   resumoRec.innerHTML = `
-    <b>SÃ³ recorrÃªncias ativas:</b>
-    Entradas ${money(r.entradas)} | SaÃ­das ${money(r.saidas)} | Saldo ${money(r.saldo)}
+    <b>Só recorrências ativas:</b>
+    Entradas ${money(r.entradas)} | Saídas ${money(r.saidas)} | Saldo ${money(r.saldo)}
   `;
 }
 
@@ -828,7 +853,7 @@ async function carregarRecorrencias() {
       <td>${r.categoria ?? "-"}</td>
       <td>${r.tipo}</td>
       <td>${money(r.valor)}</td>
-      <td>${r.ativo ? "Sim" : "NÃ£o"}</td>
+      <td>${r.ativo ? "Sim" : "Não"}</td>
       <td>
         <button data-ra="edit" data-id="${r.id}">Editar</button>
         <button data-ra="del" data-id="${r.id}">Excluir</button>
@@ -881,7 +906,7 @@ listaRec?.addEventListener("click", async (e) => {
   const id = Number(btn.dataset.id);
 
   if (action === "del") {
-    const ok = await modalConfirmar("Excluir recorrÃªncia", "Excluir essa recorrÃªncia?", "Excluir");
+    const ok = await modalConfirmar("Excluir recorrência", "Excluir essa recorrência?", "Excluir");
     if (!ok) return;
     await api(`/api/recorrencias/${id}`, { method: "DELETE" });
     await carregarRecorrencias();
@@ -946,7 +971,7 @@ async function carregarResumo() {
   resumoDiv.innerHTML = `
     <p>Saldo total: ${money(dados.saldo)}</p>
     <p>Entradas: ${money(dados.entradas)}</p>
-    <p>SaÃ­das: ${money(dados.saidas)}</p>
+    <p>Saídas: ${money(dados.saidas)}</p>
   `;
 }
 const chartCanvas = document.querySelector("#chartCats");
@@ -972,7 +997,7 @@ async function carregarGraficoCategorias() {
     data: {
       labels,
       datasets: [
-        { label: "SaÃ­das", data: saidas, backgroundColor: "#ef4444" },
+        { label: "Saídas", data: saidas, backgroundColor: "#ef4444" },
         { label: "Entradas", data: entradas, backgroundColor: "#22c55e" },
       ]
     },
@@ -997,8 +1022,8 @@ async function carregarPrevisao() {
   previsaoDiv.innerHTML = `
     <b>Saldo atual:</b> ${money(p.saldo_atual)}<br/>
     <b>Entradas previstas:</b> ${money(p.entradas_previstas)}<br/>
-    <b>SaÃ­das previstas:</b> ${money(p.saidas_previstas)}<br/>
-    <b>Saldo previsto (fim do mÃªs):</b> ${money(p.saldo_previsto)}
+    <b>Saídas previstas:</b> ${money(p.saidas_previstas)}<br/>
+    <b>Saldo previsto (fim do mês):</b> ${money(p.saldo_previsto)}
   `;
 }
 
@@ -1113,7 +1138,7 @@ async function carregarControleCartao() {
       <strong>${money(dados.usado)}</strong>
     </div>
     <div>
-      <span>DisponÃ­vel</span>
+      <span>Disponí­vel</span>
       <strong>${money(dados.disponivel)}</strong>
     </div>
   </div>
@@ -1138,20 +1163,53 @@ async function refreshTudo() {
     }
   };
 
-  if (typeof carregarTransacoes === "function") await safeRun(carregarTransacoes, "carregarTransacoes");
-  if (typeof carregarResumo === "function") await safeRun(carregarResumo, "carregarResumo");
-  if (typeof carregarRelatorioCategorias === "function") await safeRun(carregarRelatorioCategorias, "carregarRelatorioCategorias");
-  if (typeof carregarPrevisao === "function") await safeRun(carregarPrevisao, "carregarPrevisao");
-  if (typeof carregarFatura === "function") await safeRun(carregarFatura, "carregarFatura");
-  if (typeof carregarDashboard === "function") await safeRun(carregarDashboard, "carregarDashboard");
-  if (typeof carregarControleCartao === "function") await safeRun(carregarControleCartao, "carregarControleCartao");
-  if (typeof carregarCaixinhas === "function") await safeRun(carregarCaixinhas, "carregarCaixinhas");
+  if (typeof carregarTransacoes === "function") {
+    await safeRun(carregarTransacoes, "carregarTransacoes");
+  }
 
-  // Graficos por ultimo: falha de grafico nao pode impedir a renderizacao principal.
-  if (typeof carregarGraficoCategorias === "function") await safeRun(carregarGraficoCategorias, "carregarGraficoCategorias");
-  if (typeof carregarGraficoMensal === "function") await safeRun(carregarGraficoMensal, "carregarGraficoMensal");
-  if (typeof carregarGraficoDiario === "function") await safeRun(() => carregarGraficoDiario(filtroMes.value), "carregarGraficoDiario");
-  if (typeof carregarGraficoCaixinhas === "function") await safeRun(carregarGraficoCaixinhas, "carregarGraficoCaixinhas");
+  if (typeof carregarResumo === "function") {
+    await safeRun(carregarResumo, "carregarResumo");
+  }
+
+  if (typeof carregarRelatorioCategorias === "function") {
+    await safeRun(carregarRelatorioCategorias, "carregarRelatorioCategorias");
+  }
+
+  if (typeof carregarPrevisao === "function") {
+    await safeRun(carregarPrevisao, "carregarPrevisao");
+  }
+
+  if (typeof carregarFatura === "function") {
+    await safeRun(carregarFatura, "carregarFatura");
+  }
+
+  if (typeof carregarDashboard === "function") {
+    await safeRun(carregarDashboard, "carregarDashboard");
+  }
+
+  if (typeof carregarControleCartao === "function") {
+    await safeRun(carregarControleCartao, "carregarControleCartao");
+  }
+
+  if (typeof carregarCaixinhas === "function") {
+    await safeRun(carregarCaixinhas, "carregarCaixinhas");
+  }
+
+  if (typeof carregarGraficoCategorias === "function") {
+    await safeRun(carregarGraficoCategorias, "carregarGraficoCategorias");
+  }
+
+  if (typeof carregarGraficoMensal === "function") {
+    await safeRun(carregarGraficoMensal, "carregarGraficoMensal");
+  }
+
+  if (typeof carregarGraficoDiario === "function" && filtroMes?.value) {
+    await safeRun(() => carregarGraficoDiario(filtroMes.value), "carregarGraficoDiario");
+  }
+
+  if (typeof carregarGraficoCaixinhas === "function") {
+    await safeRun(carregarGraficoCaixinhas, "carregarGraficoCaixinhas");
+  }
 }
 
 // ===== CARTÃƒO (visualizaÃ§Ã£o/teste) =====
@@ -1210,15 +1268,15 @@ async function carregarCartoes() {
 
 function resetFormCartaoParaCriacao() {
   cartaoEditandoId = null;
-  if (tituloModalCartao) tituloModalCartao.textContent = "Criar CartÃ£o";
+  if (tituloModalCartao) tituloModalCartao.textContent = "Criar Cartão";
   if (btnSalvarCartao) btnSalvarCartao.textContent = "Criar";
   formCartao?.reset();
 }
 
 function preencherFormCartaoParaEdicao(cartao) {
   cartaoEditandoId = Number(cartao.id);
-  if (tituloModalCartao) tituloModalCartao.textContent = "Editar CartÃ£o";
-  if (btnSalvarCartao) btnSalvarCartao.textContent = "Salvar alteraÃ§Ãµes";
+  if (tituloModalCartao) tituloModalCartao.textContent = "Editar Cartão";
+  if (btnSalvarCartao) btnSalvarCartao.textContent = "Salvar alterações";
 
   cNome.value = cartao.nome ?? "";
   cLimite.value = Number(cartao.limite ?? 0);
@@ -1353,7 +1411,7 @@ formCompra?.addEventListener("submit", async (e) => {
   });
   formCompra.reset();
   ccData.valueAsDate = new Date();
-  await modalAviso("Sucesso", "Compra lanÃ§ada e parcelas geradas!");
+  await modalAviso("Sucesso", "Compra lançada e parcelas geradas!");
 });
 
 btnFat?.addEventListener("click", async () => {
@@ -1428,7 +1486,7 @@ btnPDF?.addEventListener("click", () => {
   const mes = filtroMes.value;
 
   if (!mes) {
-    modalAviso("Aviso", "Selecione um mÃªs");
+    modalAviso("Aviso", "Selecione um mês");
     return;
   }
 
@@ -1472,7 +1530,7 @@ function bindPagarFatura() {
     if (fatura.total === 0) {
       await abrirModal({
         titulo: "Aviso",
-        texto: "Essa fatura jÃ¡ estÃ¡ paga ou nÃ£o possui parcelas abertas"
+        texto: "Essa fatura já está paga ou não possui parcelas abertas"
       });
       return;
     }
@@ -1760,9 +1818,9 @@ document.addEventListener("DOMContentLoaded", () => {
       chartCaixinhas = null;
     }
 
-    // Espera o repaint da aba ativa para garantir que os canvases estejam visiveis.
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-    await new Promise((resolve) => setTimeout(resolve, 40));
+// Espera o repaint da aba ativa para garantir que os canvases estejam visiveis.
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  await new Promise((resolve) => setTimeout(resolve, 40));
 
     if (typeof carregarGraficoCategorias === "function") {
       await carregarGraficoCategorias();
@@ -1798,6 +1856,16 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+const canvasCaixinhas = document.getElementById("graficoCaixinhas");
+const ctxCaixinhas = canvasCaixinhas?.getContext("2d");
+
+function criarGradiente(cor) {
+  const grad = ctx.createLinearGradient(0, 0, 0, 300);
+  grad.addColorStop(0, cor + "55");
+  grad.addColorStop(1, cor + "00");
+  return grad;
+}
+
 async function carregarGraficoDiario(mes) {
   const resp = await api(`/api/diario?mes=${mes}`);
   const dados = await resp.json();
@@ -1822,7 +1890,7 @@ async function carregarGraficoDiario(mes) {
           tension: 0.3
         },
         {
-          label: "SaÃ­das",
+          label: "Saí­das",
           data: saidas,
           borderColor: "#ef4444",
           backgroundColor: "#ef444433",
