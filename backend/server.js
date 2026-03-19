@@ -5,15 +5,15 @@ require("dotenv").config();
 const express = require("express");
 const db = require("./db");
 require("./initDB");
-garantirCategoriasPadrao();
 
 const path = require("path");
 
 const queries = require("./queries"); // importa todas as funções
 
 const app = express();
+let rendimentoAgendadorIniciado = false;
 
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
@@ -350,6 +350,10 @@ function auth(req, res, next) {
 app.use(express.static(path.join(__dirname, "public")));
 
 app.use(express.static(path.join(__dirname, "..", "src")));
+
+app.get("/health", (req, res) => {
+  res.json({ ok: true });
+});
 
 
 // Rotas protegidas por autenticação
@@ -1101,8 +1105,19 @@ app.get("/api/diario", auth, (req, res) => {
 
 //temporarios
 
-garantirCategoriasPadrao();
-rendimentoService.iniciarAgendadorRendimento();
-app.listen(3000, () => {
-  console.log("🚀 Servidor rodando em http://localhost:3000");
-});
+function startServer(port = 3000) {
+  garantirCategoriasPadrao();
+
+  if (!rendimentoAgendadorIniciado) {
+    rendimentoService.iniciarAgendadorRendimento();
+    rendimentoAgendadorIniciado = true;
+  }
+
+  const server = app.listen(port, () => {
+    console.log(`Servidor rodando em http://localhost:${port}`);
+  });
+
+  return server;
+}
+
+module.exports = { startServer };

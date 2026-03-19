@@ -1510,7 +1510,7 @@ btnFat?.addEventListener("click", async () => {
   await carregarFatura();
 })();
 
-// FunÃ§Ã£o utilitÃ¡ria para abrir/fechar modais de forma segura
+// Função utilitária para abrir/fechar modais de forma segura
 function setupModal(modalId, openBtnId, closeBtnId) {
   const modal = document.getElementById(modalId);
   const openBtn = document.getElementById(openBtnId);
@@ -1544,7 +1544,7 @@ setupModal("modalCartao", "abrirModalCartao", "fecharModalCartao");
 setupModal("modalRec", "abrirModalRec", "fecharModalRec");
 setupModal("modalParcelas", null, "fecharParcelas");
 setupModal("modalCategoria", "btnNovaCategoria", "cancelarCategoria");
-// Modal padrÃ£o jÃ¡ tem lÃ³gica prÃ³pria, nÃ£o precisa duplicar
+// Modal padrão já tem lógica própria, não precisa duplicar
 const btnPDF = document.getElementById("btnPDF");
 
 btnPDF?.addEventListener("click", () => {

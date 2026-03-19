@@ -1163,7 +1163,8 @@ body.login .auth-box::before {
 }
 
 .login-logo {
-  width: 90px;
+  width: 140px;
+  max-width: 48vw;
   margin-bottom: 18px;
 }
 
@@ -1360,6 +1361,10 @@ body.login .auth-box::before {
 }
 
 @media (max-width: 900px) {
+  .login-logo {
+    width: 116px;
+  }
+
   .auth-box {
     width: 100%;
     padding: 26px 20px;
