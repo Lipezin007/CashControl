@@ -1,6 +1,7 @@
 const Database = require("better-sqlite3");
 const path = require("path");
 
+// Esse arquivo cria o schema base e aplica migrações leves quando o app sobe.
 const dbPath = path.join(__dirname, "..", "database", "database.db");
 
 const db = new Database(dbPath);
@@ -142,7 +143,7 @@ CREATE TABLE IF NOT EXISTS rendimento_instituicoes (
 `);
 
 /* -------------------------
-   CATEGORIAS PADRÃO
+  CATEGORIAS PADRÃO
 --------------------------*/
 
 const qtd = db.prepare(`
@@ -176,7 +177,7 @@ if (qtd === 0) {
 
 console.log("Banco criado com sucesso.");
 
-// Migração leve para bases antigas
+// Migração leve para bases antigas (sem perder dados já existentes).
 const userColumns = db.prepare("PRAGMA table_info(usuarios)").all();
 const temResetToken = userColumns.some(c => c.name === "reset_token_hash");
 const temResetExpires = userColumns.some(c => c.name === "reset_expires_at");
@@ -196,6 +197,8 @@ db.exec("CREATE INDEX IF NOT EXISTS idx_parcelas_cartao_mes_ref ON parcelas_cart
 db.exec("CREATE INDEX IF NOT EXISTS idx_parcelas_cartao_compra_id ON parcelas_cartao(compra_id)");
 db.exec("CREATE INDEX IF NOT EXISTS idx_taxas_referencia_chave ON taxas_referencia(chave)");
 db.exec("CREATE INDEX IF NOT EXISTS idx_rendimento_inst_lookup ON rendimento_instituicoes(instituicao, produto, indexador)");
+
+// Campos adicionados em versões mais novas das parcelas.
 
 const parcelasCols = db.prepare("PRAGMA table_info(parcelas_cartao)").all();
 const temStatusParcela = parcelasCols.some(c => c.name === "status");
@@ -246,6 +249,8 @@ db.exec(`
   WHERE created_at IS NULL OR TRIM(created_at) = ''
 `);
 
+// data_hora melhora ordenação/precisão de timeline de movimentações.
+
 const caixinhaMovCols = db.prepare("PRAGMA table_info(caixinha_movimentacoes)").all();
 const temDataHoraCaixinhaMov = caixinhaMovCols.some(c => c.name === "data_hora");
 
@@ -255,6 +260,7 @@ if (!temDataHoraCaixinhaMov) {
 
 const cdiDefault = db.prepare("SELECT chave FROM taxas_referencia WHERE chave='CDI_ANUAL'").get();
 if (!cdiDefault) {
+  // Fallback inicial pra não quebrar cálculo de rendimento sem feed externo.
     db.prepare(`
     INSERT INTO taxas_referencia (chave, valor, fonte)
     VALUES ('CDI_ANUAL', 0.1365, 'fallback-inicial')

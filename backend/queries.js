@@ -1,6 +1,9 @@
 ﻿const db = require("./db");
 const { getTaxaReferencia, DEFAULT_CDI_ANUAL } = require("./rendimentoService");
 
+// Arquivo central das regras de consulta/cálculo.
+// A ideia aqui é manter SQL + regra de negócio perto, com funções pequenas por domínio.
+
 function formatMes(date) {
     return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0");
 }
@@ -38,6 +41,8 @@ function updateMovimentacao(id, descricao, valor, tipo, categoria_id, data, usua
 
 function getSaldoAtual(usuario_id) {
 
+  // Saldo consolidado até hoje (entrada soma, saída subtrai).
+
     const hoje = new Date().toISOString().slice(0, 10);
 
     const row = db.prepare(`
@@ -56,6 +61,7 @@ function getSaldoAtual(usuario_id) {
 }
 
 function getSaldoDisponivelParaCaixinhas(usuario_id) {
+  // Saldo disponível = saldo fora de caixinha - saldo já alocado nas caixinhas.
     const externo = db.prepare(`
     SELECT COALESCE(SUM(
       CASE
@@ -834,6 +840,7 @@ function diasDecorridos(dataInicio) {
 }
 
 function calcularRendimento(saldo, percentual, dias, cdiAnual) {
+  // Juros compostos simplificados com base em % do CDI anual.
     const p = Number(percentual || 0);
     const d = Number(dias || 0);
     const s = Number(saldo || 0);
@@ -894,6 +901,7 @@ function getPercentualAutomatico(caixinha) {
 }
 
 function getCaixinhas(usuario_id) {
+  // Sempre devolve a caixinha já com campos derivados pra renderização no front.
     const cdiAnual = getTaxaReferencia("CDI_ANUAL", DEFAULT_CDI_ANUAL);
 
     const rows = db.prepare(`
@@ -1055,6 +1063,7 @@ function deleteCaixinha(id, usuario_id) {
 }
 
 function movimentarCaixinha(caixinha_id, usuario_id, valor, tipo, data) {
+  // Movimentação em caixinha também espelha no saldo principal pra manter consistência.
     const valorNum = Number(valor);
     if (!Number.isFinite(valorNum) || valorNum <= 0) {
         return { ok: false, erro: "Valor invÃ¡lido" };
@@ -1156,15 +1165,23 @@ function getCaixinhasTaxasEmUso(usuario_id) {
 }
 
 function getCaixinhasEvolucao(periodo, usuario_id, referencia = null) {
+  // Evolução histórica sem projeção futura: mostra só o que já aconteceu até "agora".
   const periodoNormalizado = ["diario", "semanal", "mensal", "anual"].includes(periodo)
     ? periodo
     : "mensal";
+  const cdiAnual = getTaxaReferencia("CDI_ANUAL", DEFAULT_CDI_ANUAL);
 
   const now = referencia ? new Date(referencia) : new Date();
+  const nowTs = now.getTime();
   const buckets = [];
 
+  const pushBucketAteAgora = (idx, label, start, end) => {
+    if (start.getTime() > nowTs) return;
+    buckets.push({ idx, label, start, end });
+  };
+
   const caixinhas = db.prepare(`
-    SELECT id, nome, saldo
+    SELECT id, nome, saldo, rendimento_percentual, auto_percentual, instituicao, produto, rendimento_tipo
     FROM caixinhas
     WHERE usuario_id = ?
     ORDER BY nome
@@ -1197,12 +1214,7 @@ function getCaixinhasEvolucao(periodo, usuario_id, referencia = null) {
       const end = new Date(start);
       end.setHours(h + 1, 0, 0, 0);
 
-      buckets.push({
-        idx: h,
-        label: `${String(h).padStart(2, "0")}h`,
-        start,
-        end
-      });
+      pushBucketAteAgora(h, `${String(h).padStart(2, "0")}h`, start, end);
     }
   }
 
@@ -1219,7 +1231,7 @@ function getCaixinhasEvolucao(periodo, usuario_id, referencia = null) {
       const end = new Date(start);
       end.setDate(start.getDate() + 1);
 
-      buckets.push({ idx: i, label: labels[i], start, end });
+      pushBucketAteAgora(i, labels[i], start, end);
     }
   }
 
@@ -1232,12 +1244,7 @@ function getCaixinhasEvolucao(periodo, usuario_id, referencia = null) {
     const start = new Date(ano, mes, d, 0, 0, 0, 0);
     const end = new Date(ano, mes, d + 1, 0, 0, 0, 0);
 
-    buckets.push({
-      idx: d - 1,
-      label: String(d).padStart(2, "0"),
-      start,
-      end
-    });
+    pushBucketAteAgora(d - 1, String(d).padStart(2, "0"), start, end);
   }
 }
 
@@ -1248,7 +1255,7 @@ function getCaixinhasEvolucao(periodo, usuario_id, referencia = null) {
         for (let m = 0; m < 12; m++) {
             const start = new Date(ano, m, 1, 0, 0, 0, 0);
             const end = new Date(ano, m + 1, 1, 0, 0, 0, 0);
-            buckets.push({ idx: m, label: labels[m], start, end });
+          pushBucketAteAgora(m, labels[m], start, end);
         }
     }
 
@@ -1258,6 +1265,12 @@ function getCaixinhasEvolucao(periodo, usuario_id, referencia = null) {
     const result = [];
 
     for (const c of caixinhas) {
+        const auto = Number(c.auto_percentual || 0) === 1;
+        const autoTaxa = auto ? getPercentualAutomatico(c) : null;
+        const percentualAplicado = autoTaxa
+          ? Number(autoTaxa.percentual || 0)
+          : Number(c.rendimento_percentual || 0);
+
         const movCaixinha = movimentos.filter((m) => m.caixinha_id === Number(c.id));
         const deltaDentroRange = movCaixinha
             .filter((m) => m.dt >= rangeStart)
@@ -1271,6 +1284,10 @@ function getCaixinhasEvolucao(periodo, usuario_id, referencia = null) {
                 .reduce((acc, m) => acc + Number(m.delta || 0), 0);
 
             saldoRodando += deltaBucket;
+
+            const fimEfetivoBucket = new Date(Math.min(b.end.getTime(), nowTs));
+            const diasBucket = Math.max(0, (fimEfetivoBucket.getTime() - b.start.getTime()) / 86400000);
+            saldoRodando = calcularRendimento(saldoRodando, percentualAplicado, diasBucket, cdiAnual);
 
             result.push({
                 caixinha_id: Number(c.id),

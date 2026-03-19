@@ -6,6 +6,9 @@ const voltarLogin = document.getElementById("voltarLogin");
 const resetAviso = document.getElementById("resetAviso");
 let tokenValido = sessionStorage.getItem("reset_token_validado") || null;
 
+// Tela de reset em 2 etapas:
+// 1) validar código; 2) definir nova senha.
+
 function exibirAreaToken() {
   if (tokenInput) {
     tokenInput.style.display = "block";
@@ -29,6 +32,7 @@ function limparTokenValidado() {
 }
 
 function initModalPadrao() {
+  // Mesmo modal padrão usado no login pra manter UX consistente.
   const modal = document.querySelector("#modalPadrao");
   const modalTitulo = document.querySelector("#modalTitulo");
   const modalTexto = document.querySelector("#modalTexto");
@@ -70,6 +74,7 @@ function initModalPadrao() {
 initModalPadrao();
 
 async function enviarCodigoSePendente() {
+  // Se veio da tela de login, já dispara envio automático do código.
   const emailPendente = sessionStorage.getItem("reset_email_pendente");
   if (!emailPendente) return;
 
@@ -153,6 +158,7 @@ voltarLogin?.addEventListener("click", () => {
 });
 
 btnConfirmar?.addEventListener("click", async () => {
+  // Só libera a área de senha se o token realmente for válido.
   const token = tokenInput?.value.trim() || "";
 
   if (!token) {
@@ -195,6 +201,7 @@ btnConfirmar?.addEventListener("click", async () => {
 });
 
 btnReset?.addEventListener("click", async () => {
+  // Etapa final: troca senha usando token validado.
   const senha = document.getElementById("novaSenha").value;
   const confirmar = document.getElementById("confirmarSenha").value;
 

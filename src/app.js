@@ -1,4 +1,7 @@
-﻿const lista = document.querySelector("#lista");
+﻿// Arquivo principal do front.
+// Aqui fica quase toda a orquestração da tela: formulário, listas, gráficos e modais.
+
+const lista = document.querySelector("#lista");
 const form = document.querySelector("#form");
 const resumoDiv = document.querySelector("#resumo");
 const metaCategoria = document.querySelector("#meta_categoria");
@@ -46,6 +49,7 @@ const chartAnimationOptions = false;
 
 
 function mesAtualYYYYMM() {
+  // Formato padrão usado pela API: YYYY-MM
     const d = new Date();
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -74,6 +78,8 @@ if (!token) {
 }
 
 async function api(url, options = {}) {
+
+  // Wrapper único de fetch com token + tratamento básico de erro.
 
     const headers = {
         ...(options.headers || {}),
@@ -166,6 +172,7 @@ function corLinhaPorIndice(i) {
 }
 
 async function carregarGraficoCaixinhas() {
+  // Tenta evolução histórica; se não houver, cai no snapshot atual.
     if (!chartCaixinhasCanvas) return;
 
     const periodo = caixinhaPeriodoSelect?.value || "mensal";
@@ -709,7 +716,7 @@ formCaixinha?.addEventListener("submit", async (e) => {
   }
 
   resetFormCaixinha();
-  await carregarCaixinhas();
+  await refreshTudo();
 });
 
 listaCaixinhas?.addEventListener("click", async (e) => {
@@ -843,7 +850,7 @@ listaCaixinhas?.addEventListener("click", async (e) => {
 
 btnSyncRendimento?.addEventListener("click", async () => {
   await api("/api/rendimento/atualizar", { method: "POST" });
-  await carregarCaixinhas();
+  await refreshTudo();
 
   if (typeof abrirModal === "function") {
     await abrirModal({
@@ -1211,6 +1218,8 @@ async function carregarControleCartao() {
 fatCartao?.addEventListener("change", carregarControleCartao);
 
 async function refreshTudo() {
+  // Recarrega toda a tela com tolerância a falha por bloco.
+  // Se uma parte der erro, as outras continuam atualizando.
   const safeRun = async (fn, nome) => {
     try {
       await fn();

@@ -1,5 +1,7 @@
 require("dotenv").config();
 
+// API principal da aplicação (auth, movimentações, caixinhas, cartões e relatórios).
+
 const express = require("express");
 const db = require("./db");
 require("./initDB");
@@ -37,6 +39,7 @@ const hasResetTokenPlainCol = userColumns.some((c) => c.name === "reset_token");
 const hasResetExpiraCol = userColumns.some((c) => c.name === "reset_expira");
 
 function getResetUserByToken(token) {
+  // Trabalha com hash do token pra não armazenar código sensível em texto puro.
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
   if (hasResetTokenHashCol && hasResetExpiresAtCol) {
@@ -60,6 +63,7 @@ function getResetUserByToken(token) {
 }
 
 function clearResetTokenByUserId(userId) {
+  // Sempre invalida o token depois de usar (ou expirar) pra evitar reutilização.
   if (hasResetTokenHashCol && hasResetExpiresAtCol) {
     return db.prepare(`
       UPDATE usuarios
@@ -82,6 +86,8 @@ function clearResetTokenByUserId(userId) {
 }
 
 function garantirCategoriasPadrao(){
+
+  // Só roda quando a tabela está vazia.
 
   const qtd = db.prepare(`
     SELECT COUNT(*) as total FROM categorias
@@ -188,6 +194,7 @@ app.post("/api/login", async (req, res) => {
 });
 
 async function handleForgotPassword(req, res) {
+  // Nunca revela se o e-mail existe: resposta sempre neutra por segurança.
   const email = String(req.body?.email || "").trim().toLowerCase();
 
   // Sempre retorna ok para nao vazar quais emails existem no sistema.

@@ -1,9 +1,11 @@
 const db = require("./db");
 const taxasPadraoInstituicoes = require("./data/rendimentoInstituicoes.default.json");
 
+// Valor de segurança usado quando ainda não temos taxa atualizada no banco.
 const DEFAULT_CDI_ANUAL = 0.1365;
 
 async function fetchJSON(url) {
+  // Wrapper simples pra padronizar erro e user-agent das integrações.
   const res = await fetch(url, {
     headers: { "User-Agent": "CashControl/1.0" }
   });
@@ -16,6 +18,7 @@ async function fetchJSON(url) {
 }
 
 function upsertTaxaReferencia(chave, valor, fonte) {
+  // Upsert evita duplicidade e mantém a taxa sempre atualizada pela chave.
   db.prepare(`
     INSERT INTO taxas_referencia (chave, valor, fonte, updated_at)
     VALUES (?, ?, ?, CURRENT_TIMESTAMP)
@@ -66,6 +69,7 @@ async function atualizarCDIAnual() {
 }
 
 function upsertRendimentoInstituicao(item) {
+  // Normaliza e valida antes de gravar pra não contaminar a base com lixo.
   const instituicao = String(item.instituicao || "").trim();
   const produto = String(item.produto || "Conta").trim();
   const indexador = String(item.indexador || "CDI").trim().toUpperCase();
@@ -113,6 +117,7 @@ function desativarTaxasLocalDefault() {
 }
 
 async function atualizarTaxasInstituicoes() {
+  // Fluxo: tenta feed externo; se não tiver, pode cair no fallback local configurado.
   const url = process.env.TAXAS_BANCOS_URL;
   const usarFallbackLocal = isLocalFallbackEnabled();
 
@@ -180,6 +185,7 @@ function getRendimentoInstituicoes(indexador = null) {
 }
 
 function getTaxasStatus() {
+  // Endpoint de diagnóstico para o front mostrar de onde vieram as taxas.
   const cdi = db.prepare(`
     SELECT chave, valor, fonte, updated_at
     FROM taxas_referencia
@@ -227,6 +233,7 @@ async function atualizarTudoRendimento() {
 }
 
 function iniciarAgendadorRendimento() {
+  // Atualiza na subida e depois segue no intervalo configurável.
   const intervaloHoras = Number(process.env.RENDIMENTO_SYNC_HOURS || 6);
   const ms = Math.max(1, intervaloHoras) * 60 * 60 * 1000;
 

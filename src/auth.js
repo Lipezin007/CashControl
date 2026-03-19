@@ -8,6 +8,7 @@ if (token) {
 }
 
 function initModalPadrao() {
+  // Modal global usado como substituto de alert/confirm/prompt.
   const modal = document.querySelector("#modalPadrao");
   const modalTitulo = document.querySelector("#modalTitulo");
   const modalTexto = document.querySelector("#modalTexto");
@@ -58,6 +59,7 @@ const form = document.getElementById("authForm");
 const forgotPassword = document.getElementById("forgotPassword");
 
 function mostrarLoadingRedirecionamentoReset() {
+  // Tela simples pra evitar clique duplo enquanto troca de página.
   if (document.getElementById("loadingReset")) return;
 
   const overlay = document.createElement("div");
@@ -90,6 +92,8 @@ document.querySelectorAll(".toggleSenha").forEach(btn => {
 
 toggle.addEventListener("click", () => {
 
+  // Alterna entre fluxo de login e cadastro no mesmo formulário.
+
   modoCadastro = !modoCadastro;
 
   if (modoCadastro) {
@@ -111,6 +115,7 @@ toggle.addEventListener("click", () => {
 });
 
 forgotPassword?.addEventListener("click", async () => {
+  // Pede e-mail aqui e delega envio do código pra tela de reset.
   const email = await abrirModal({
     titulo: "Recuperar senha",
     texto: "Digite seu e-mail para recuperar a senha",

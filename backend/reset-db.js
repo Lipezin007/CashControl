@@ -2,6 +2,9 @@ const db = require("./db");
 
 console.log("Limpando banco...");
 
+// Reset bruto pra ambiente de teste/dev.
+// Cada try/catch ignora tabela ausente pra não travar em bases antigas.
+
 try { db.prepare("DELETE FROM movimentacoes").run(); } catch {}
 try { db.prepare("DELETE FROM transacoes").run(); } catch {}
 try { db.prepare("DELETE FROM recorrencias").run(); } catch {}
