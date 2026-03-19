@@ -456,6 +456,12 @@ function resetFormCaixinha() {
     if (btnSalvarCaixinha) btnSalvarCaixinha.textContent = "+ Nova Caixinha";
 }
 
+function getLabelOrigemTaxa(origem) {
+  if (origem === "automatico") return "Automática";
+  if (origem === "manual_fallback") return "Automática (fallback manual)";
+  return "Manual";
+}
+
 async function carregarCaixinhas() {
     if (!listaCaixinhas) return;
 
@@ -473,11 +479,20 @@ async function carregarCaixinhas() {
     listaCaixinhas.innerHTML = caixinhas.map(c => {
                 const saldo = Number(c.saldo || 0);
                 const saldoAtualizado = Number(c.saldo_atualizado || saldo);
-                const rendimento = Number(c.rendimento_estimado || 0);
+                const rendimento = Number((c.rendimento ?? c.rendimento_estimado) || 0);
+                const dias = Number((c.dias ?? c.dias_rendimento) || 0);
                 const objetivo = Number(c.objetivo || 0);
                 const progresso = objetivo > 0 ? Math.min(100, (saldoAtualizado / objetivo) * 100) : 0;
                 const classeProgresso = getClasseProgresso(progresso);
                 const icone = getCaixinhaIcone(c.nome);
+                const rendimentoTexto = dias === 0
+                  ? "Começa a render amanhã"
+                  : `${money(rendimento)} em ${dias} dias`;
+                const origemTaxaTexto = c.percentual_origem === "automatico"
+                  ? "auto"
+                  : c.percentual_origem === "manual_fallback"
+                    ? "auto sem taxa (manual)"
+                    : "manual";
 
                 return `
       <article class="caixinha-card">
@@ -488,8 +503,9 @@ async function carregarCaixinhas() {
 
         <p><b>Saldo:</b> ${money(saldoAtualizado)}</p>
         <p><b>Base:</b> ${money(saldo)}</p>
-        <p><b>Rendimento simulado:</b> ${money(rendimento)} em ${Number(c.dias_rendimento || 0)} dias</p>
-        <p><b>Taxa aplicada:</b> ${Number(c.percentual_aplicado || 0).toFixed(2)}% do ${c.rendimento_tipo || "í­ndice"} (${c.percentual_origem === "automatico" ? "auto" : "manual"})</p>
+        <p><b>Rendimento:</b> ${rendimentoTexto}</p>
+        <p><b>Taxa aplicada:</b> ${Number(c.percentual_aplicado || 0).toFixed(2)}% do ${c.rendimento_tipo || "í­ndice"} (${origemTaxaTexto})</p>
+        ${c.aviso_auto ? `<p><small>${c.aviso_auto}</small></p>` : ""}
         <p><b>Instituição:</b> ${c.instituicao || "-"} ${c.produto ? `(${c.produto})` : ""}</p>
         <p><b>Meta:</b> ${objetivo > 0 ? money(objetivo) : "Não definida"}</p>
 
@@ -503,6 +519,7 @@ async function carregarCaixinhas() {
         <div class="caixinha-acoes">
           <button data-cx-action="deposito" data-id="${c.id}">Depositar</button>
           <button data-cx-action="saque" data-id="${c.id}">Sacar</button>
+          <button data-cx-action="taxa" data-id="${c.id}">Ver taxa em uso</button>
           <button data-cx-action="editar" data-id="${c.id}">Editar</button>
           <button data-cx-action="excluir" data-id="${c.id}">Excluir</button>
         </div>
@@ -748,6 +765,45 @@ listaCaixinhas?.addEventListener("click", async (e) => {
     caixinhaAutoPercentualInput.checked = Number(c.auto_percentual || 0) === 1;
 
     if (btnSalvarCaixinha) btnSalvarCaixinha.textContent = "Salvar";
+    return;
+  }
+
+  if (action === "taxa") {
+    try {
+      const taxas = await api("/api/caixinhas/taxas-em-uso").then(r => r.json());
+      const t = Array.isArray(taxas)
+        ? taxas.find(x => Number(x.id) === id)
+        : null;
+
+      if (!t) {
+        await modalAviso("Taxa em uso", "Não foi possível encontrar os dados dessa caixinha.");
+        return;
+      }
+
+      const linhas = [
+        `Caixinha: ${t.nome || "-"}`,
+        `Instituição: ${t.instituicao || "-"} ${t.produto ? `(${t.produto})` : ""}`,
+        `Tipo: ${t.rendimento_tipo || "-"}`,
+        `Origem: ${getLabelOrigemTaxa(t.percentual_origem)}`,
+        `Taxa aplicada: ${Number(t.percentual_aplicado || 0).toFixed(2)}%`,
+        `Taxa configurada: ${Number(t.percentual_configurado || 0).toFixed(2)}%`,
+        `Fonte: ${t.percentual_fonte || "-"}`
+      ];
+
+      if (t.percentual_updated_at) {
+        linhas.push(`Atualizada em: ${t.percentual_updated_at}`);
+      }
+
+      if (t.aviso_auto) {
+        linhas.push(`Aviso: ${t.aviso_auto}`);
+      }
+
+      await modalAviso("Taxa em uso", linhas.join("\n"));
+    } catch (err) {
+      const msg = String(err.message || "");
+      await modalAviso("Taxa em uso", msg || "Erro ao consultar taxa da caixinha.");
+    }
+
     return;
   }
 

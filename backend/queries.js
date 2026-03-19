@@ -805,14 +805,32 @@ function getPrevisaoLimite(cartao_id, usuario_id) {
 
 }
 
-function diasDesde(isoLikeDate) {
-    if (!isoLikeDate) return 0;
+function parseDataFlex(isoLikeDate) {
+  if (!isoLikeDate) return null;
 
-    const parsed = new Date(String(isoLikeDate).replace(" ", "T"));
-    if (Number.isNaN(parsed.getTime())) return 0;
+  const raw = String(isoLikeDate).trim();
+  if (!raw) return null;
 
-    const diffMs = Date.now() - parsed.getTime();
-    return Math.max(0, Math.floor(diffMs / 86400000));
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [y, m, d] = raw.split("-").map(Number);
+    return new Date(y, m - 1, d, 12, 0, 0, 0);
+  }
+
+  const parsed = new Date(raw.replace(" ", "T"));
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+}
+
+function diasDecorridos(dataInicio) {
+  const inicio = parseDataFlex(dataInicio);
+  if (!inicio) return 0;
+
+  const hoje = new Date();
+  const inicioDia = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate());
+  const hojeDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  const diff = hojeDia - inicioDia;
+
+  return Math.max(0, Math.floor(diff / 86400000));
 }
 
 function calcularRendimento(saldo, percentual, dias, cdiAnual) {
@@ -829,6 +847,15 @@ function calcularRendimento(saldo, percentual, dias, cdiAnual) {
     return Number((s * Math.pow(1 + taxaDia, d)).toFixed(2));
 }
 
+  function normalizarTextoBusca(valor) {
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase();
+  }
+
 function getPercentualAutomatico(caixinha) {
     const instituicao = String(caixinha.instituicao || "").trim();
     const produto = String(caixinha.produto || "Conta").trim();
@@ -836,43 +863,80 @@ function getPercentualAutomatico(caixinha) {
 
     if (!instituicao) return null;
 
-    const byProduto = db.prepare(`
-        SELECT percentual, fonte, updated_at FROM rendimento_instituicoes WHERE ativo = 1 AND upper(instituicao) = upper( ? ) AND upper(produto) = upper( ? ) AND upper(indexador) = upper( ? ) LIMIT 1 
-    `).get(instituicao, produto, indexador);
+    const instituicaoNorm = normalizarTextoBusca(instituicao);
+    const produtoNorm = normalizarTextoBusca(produto);
+    const indexadoresBusca = indexador === "CDI" ? ["CDI"] : [indexador, "CDI"];
 
-    if (byProduto) return byProduto;
+    for (const idx of indexadoresBusca) {
+      const candidatos = db.prepare(`
+        SELECT instituicao, produto, percentual, fonte, updated_at
+        FROM rendimento_instituicoes
+        WHERE ativo = 1
+          AND upper(indexador) = upper(?)
+        ORDER BY updated_at DESC
+      `).all(idx);
 
-    return db.prepare(`
-        SELECT percentual, fonte, updated_at FROM rendimento_instituicoes WHERE ativo = 1 AND upper(instituicao) = upper( ? ) AND upper(indexador) = upper( ? ) ORDER BY updated_at DESC LIMIT 1 
-    `).get(instituicao, indexador);
+      if (!candidatos.length) continue;
+
+      const exato = candidatos.find((t) =>
+        normalizarTextoBusca(t.instituicao) === instituicaoNorm &&
+        normalizarTextoBusca(t.produto || "Conta") === produtoNorm
+      );
+      if (exato) return exato;
+
+      const porInstituicao = candidatos.find((t) =>
+        normalizarTextoBusca(t.instituicao) === instituicaoNorm
+      );
+      if (porInstituicao) return porInstituicao;
+    }
+
+    return null;
 }
 
 function getCaixinhas(usuario_id) {
     const cdiAnual = getTaxaReferencia("CDI_ANUAL", DEFAULT_CDI_ANUAL);
 
     const rows = db.prepare(`
-        SELECT *
-        FROM caixinhas WHERE usuario_id = ?
+    SELECT
+      c.*,
+      (
+        SELECT MAX(COALESCE(cm.data_hora, cm.data))
+        FROM caixinha_movimentacoes cm
+        WHERE cm.caixinha_id = c.id
+          AND cm.usuario_id = c.usuario_id
+      ) AS ultima_movimentacao_em
+    FROM caixinhas c
+    WHERE c.usuario_id = ?
         ORDER BY datetime(created_at) DESC, id DESC 
     `).all(usuario_id);
 
     return rows.map((c) => {
-        const dias = diasDesde(c.created_at);
+    const dataInicioRendimento = c.ultima_movimentacao_em || c.created_at;
+    const dias = diasDecorridos(dataInicioRendimento);
         const auto = Number(c.auto_percentual || 0) === 1;
         const autoTaxa = auto ? getPercentualAutomatico(c) : null;
         const percentualAplicado = autoTaxa ? Number(autoTaxa.percentual) : Number(c.rendimento_percentual || 0);
         const saldoAtualizado = calcularRendimento(c.saldo, percentualAplicado, dias, cdiAnual);
+    const rendimento = Number((saldoAtualizado - Number(c.saldo || 0)).toFixed(2));
+      const percentualOrigem = autoTaxa ? "automatico" : (auto ? "manual_fallback" : "manual");
+      const avisoAuto = auto && !autoTaxa
+        ? "Taxa da instituição não encontrada. Usando percentual manual."
+        : null;
 
         return {
             ...c,
+      data_inicio_rendimento: dataInicioRendimento,
             percentual_aplicado: percentualAplicado,
-            percentual_origem: autoTaxa ? "automatico" : "manual",
+        percentual_origem: percentualOrigem,
             percentual_fonte: autoTaxa?.fonte || null,
             percentual_updated_at: autoTaxa?.updated_at || null,
+        aviso_auto: avisoAuto,
             cdi_anual: cdiAnual,
+      dias,
             dias_rendimento: dias,
             saldo_atualizado: saldoAtualizado,
-            rendimento_estimado: Number((saldoAtualizado - Number(c.saldo || 0)).toFixed(2))
+      rendimento,
+      rendimento_estimado: rendimento
         };
     });
 }
@@ -1072,6 +1136,25 @@ function getCaixinhaMovimentacoes(caixinha_id, usuario_id) {
     `).all(Number(caixinha_id), usuario_id);
 }
 
+function getCaixinhasTaxasEmUso(usuario_id) {
+  const caixinhas = getCaixinhas(usuario_id);
+
+  return caixinhas.map((c) => ({
+    id: Number(c.id),
+    nome: c.nome,
+    instituicao: c.instituicao || null,
+    produto: c.produto || null,
+    rendimento_tipo: c.rendimento_tipo || null,
+    auto_percentual: Number(c.auto_percentual || 0) === 1,
+    percentual_configurado: Number(c.rendimento_percentual || 0),
+    percentual_aplicado: Number(c.percentual_aplicado || 0),
+    percentual_origem: c.percentual_origem || "manual",
+    percentual_fonte: c.percentual_fonte || null,
+    percentual_updated_at: c.percentual_updated_at || null,
+    aviso_auto: c.aviso_auto || null
+  }));
+}
+
 function getCaixinhasEvolucao(periodo, usuario_id, referencia = null) {
   const periodoNormalizado = ["diario", "semanal", "mensal", "anual"].includes(periodo)
     ? periodo
@@ -1256,6 +1339,7 @@ module.exports = {
     deleteCaixinha,
     movimentarCaixinha,
     getCaixinhaMovimentacoes,
+    getCaixinhasTaxasEmUso,
     getCaixinhasEvolucao,
 
 };

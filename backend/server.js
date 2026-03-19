@@ -419,6 +419,10 @@ app.get("/api/caixinhas", auth, (req, res) => {
   res.json(queries.getCaixinhas(req.user.id));
 });
 
+app.get("/api/caixinhas/taxas-em-uso", auth, (req, res) => {
+  res.json(queries.getCaixinhasTaxasEmUso(req.user.id));
+});
+
 app.post("/api/caixinhas", auth, (req, res) => {
   const {
     nome,

@@ -213,6 +213,7 @@ const caixinhasCols = db.prepare("PRAGMA table_info(caixinhas)").all();
 const temInstituicao = caixinhasCols.some(c => c.name === "instituicao");
 const temProduto = caixinhasCols.some(c => c.name === "produto");
 const temAutoPercentual = caixinhasCols.some(c => c.name === "auto_percentual");
+const temCreatedAtCaixinha = caixinhasCols.some(c => c.name === "created_at");
 
 if (!temInstituicao) {
     db.exec("ALTER TABLE caixinhas ADD COLUMN instituicao TEXT");
@@ -225,6 +226,25 @@ if (!temProduto) {
 if (!temAutoPercentual) {
     db.exec("ALTER TABLE caixinhas ADD COLUMN auto_percentual INTEGER DEFAULT 0");
 }
+
+if (!temCreatedAtCaixinha) {
+    db.exec("ALTER TABLE caixinhas ADD COLUMN created_at TEXT");
+}
+
+db.exec(`
+  UPDATE caixinhas
+  SET created_at = COALESCE(
+    created_at,
+    (
+      SELECT MIN(COALESCE(cm.data_hora, cm.data))
+      FROM caixinha_movimentacoes cm
+      WHERE cm.caixinha_id = caixinhas.id
+        AND cm.usuario_id = caixinhas.usuario_id
+    ),
+    CURRENT_TIMESTAMP
+  )
+  WHERE created_at IS NULL OR TRIM(created_at) = ''
+`);
 
 const caixinhaMovCols = db.prepare("PRAGMA table_info(caixinha_movimentacoes)").all();
 const temDataHoraCaixinhaMov = caixinhaMovCols.some(c => c.name === "data_hora");

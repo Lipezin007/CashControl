@@ -1,4 +1,5 @@
 const db = require("./db");
+const taxasPadraoInstituicoes = require("./data/rendimentoInstituicoes.default.json");
 
 const DEFAULT_CDI_ANUAL = 0.1365;
 
@@ -97,19 +98,46 @@ function upsertRendimentoInstituicao(item) {
   return { ok: true };
 }
 
+function isLocalFallbackEnabled() {
+  const raw = String(process.env.USE_LOCAL_DEFAULT_RATES || "").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes";
+}
+
+function desativarTaxasLocalDefault() {
+  return db.prepare(`
+    UPDATE rendimento_instituicoes
+    SET ativo = 0
+    WHERE fonte = 'local-default'
+       OR source_url = 'local://default-rates'
+  `).run();
+}
+
 async function atualizarTaxasInstituicoes() {
   const url = process.env.TAXAS_BANCOS_URL;
+  const usarFallbackLocal = isLocalFallbackEnabled();
+
+  let lista = null;
+  let fonte = null;
 
   if (!url) {
-    return {
-      ok: true,
-      skipped: true,
-      motivo: "TAXAS_BANCOS_URL não configurada"
-    };
-  }
+    if (!usarFallbackLocal) {
+      const desativadas = desativarTaxasLocalDefault();
+      return {
+        ok: true,
+        skipped: true,
+        motivo: "TAXAS_BANCOS_URL não configurada",
+        local_default_ativo: false,
+        locais_desativadas: Number(desativadas.changes || 0)
+      };
+    }
 
-  const payload = await fetchJSON(url);
-  const lista = Array.isArray(payload) ? payload : payload?.data;
+    lista = Array.isArray(taxasPadraoInstituicoes) ? taxasPadraoInstituicoes : [];
+    fonte = "local-default";
+  } else {
+    const payload = await fetchJSON(url);
+    lista = Array.isArray(payload) ? payload : payload?.data;
+    fonte = url;
+  }
 
   if (!Array.isArray(lista)) {
     throw new Error("Feed de instituições inválido (esperado array)");
@@ -117,14 +145,18 @@ async function atualizarTaxasInstituicoes() {
 
   let atualizadas = 0;
   for (const item of lista) {
-    const r = upsertRendimentoInstituicao(item);
+    const r = upsertRendimentoInstituicao({
+      ...item,
+      fonte: item?.fonte || fonte,
+      source_url: item?.source_url || (fonte === "local-default" ? "local://default-rates" : fonte)
+    });
     if (r.ok) atualizadas++;
   }
 
   return {
     ok: true,
     atualizadas,
-    fonte: url
+    fonte
   };
 }
 
@@ -168,7 +200,7 @@ function getTaxasStatus() {
   return {
     cdi,
     total_instituicoes: totalInstituicoes,
-    fonte_instituicoes: process.env.TAXAS_BANCOS_URL || null
+    fonte_instituicoes: process.env.TAXAS_BANCOS_URL || (isLocalFallbackEnabled() ? "local-default" : null)
   };
 }
 

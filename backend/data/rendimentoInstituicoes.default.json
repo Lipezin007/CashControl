@@ -1,0 +1,58 @@
+[
+  {
+    "instituicao": "Nubank",
+    "produto": "Conta",
+    "indexador": "CDI",
+    "percentual": 100,
+    "fonte": "local-default"
+  },
+  {
+    "instituicao": "Nubank",
+    "produto": "CDB",
+    "indexador": "CDI",
+    "percentual": 100,
+    "fonte": "local-default"
+  },
+  {
+    "instituicao": "Itaú",
+    "produto": "Conta",
+    "indexador": "CDI",
+    "percentual": 100,
+    "fonte": "local-default"
+  },
+  {
+    "instituicao": "Itaú",
+    "produto": "CDB",
+    "indexador": "CDI",
+    "percentual": 100,
+    "fonte": "local-default"
+  },
+  {
+    "instituicao": "Inter",
+    "produto": "Conta",
+    "indexador": "CDI",
+    "percentual": 100,
+    "fonte": "local-default"
+  },
+  {
+    "instituicao": "C6",
+    "produto": "Conta",
+    "indexador": "CDI",
+    "percentual": 100,
+    "fonte": "local-default"
+  },
+  {
+    "instituicao": "PicPay",
+    "produto": "Conta",
+    "indexador": "CDI",
+    "percentual": 102,
+    "fonte": "local-default"
+  },
+  {
+    "instituicao": "Mercado Pago",
+    "produto": "Conta",
+    "indexador": "CDI",
+    "percentual": 105,
+    "fonte": "local-default"
+  }
+]
