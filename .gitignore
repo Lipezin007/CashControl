@@ -1,4 +1,4 @@
-node_modules
-out
-database
+node_modules/
+out/
+database/
 .env
