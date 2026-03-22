@@ -34,6 +34,7 @@ function resolveDbPath() {
 const dbPath = resolveDbPath();
 
 const db = new Database(dbPath);
+db.DB_PATH = dbPath;
 
 // Garante que constraints de FK sejam realmente aplicadas no SQLite.
 db.pragma("foreign_keys = ON");

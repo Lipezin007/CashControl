@@ -1,10 +1,6 @@
-const Database = require("better-sqlite3");
-const path = require("path");
+const db = require("./db");
 
 // Esse arquivo cria o schema base e aplica migrações leves quando o app sobe.
-const dbPath = path.join(__dirname, "..", "database", "database.db");
-
-const db = new Database(dbPath);
 
 console.log("Inicializando banco de dados...");
 
@@ -267,4 +263,4 @@ if (!cdiDefault) {
   `).run();
 }
 
-db.close();
+// Não fecha conexão aqui: ela é compartilhada pelo processo inteiro.

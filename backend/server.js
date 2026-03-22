@@ -1,12 +1,31 @@
-require("dotenv").config();
+const fs = require("fs");
+const path = require("path");
+const dotenv = require("dotenv");
+
+// Garante carregamento do .env mesmo quando o cwd muda (ex.: Electron).
+const envCandidates = [
+  path.resolve(__dirname, "..", ".env"),
+  path.resolve(process.cwd(), ".env")
+];
+
+let envLoaded = false;
+for (const envPath of envCandidates) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    envLoaded = true;
+    break;
+  }
+}
+
+if (!envLoaded) {
+  dotenv.config();
+}
 
 // API principal da aplicação (auth, movimentações, caixinhas, cartões e relatórios).
 
 const express = require("express");
 const db = require("./db");
 require("./initDB");
-
-const path = require("path");
 
 const queries = require("./queries"); // importa todas as funções
 
@@ -22,11 +41,16 @@ const rendimentoService = require("./rendimentoService");
 const SECRET = "cashcontrol_super_secret";
 const RESET_TOKEN_TTL_MS = 1000 * 60 * 15;
 
+function getSmtpPass() {
+  // Alguns provedores exibem app password com espaços para leitura.
+  return String(process.env.SMTP_PASS || "").replace(/\s+/g, "");
+}
+
 const transporter = nodemailer.createTransport({
   service: process.env.SMTP_SERVICE || "gmail",
   auth: {
     user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
+    pass: getSmtpPass()
   }
 });
 
@@ -218,7 +242,7 @@ async function handleForgotPassword(req, res) {
     WHERE id = ?
   `).run(tokenHash, expiraEm, user.id);
 
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+  if (!process.env.SMTP_USER || !getSmtpPass()) {
     console.error("SMTP nao configurado. Defina SMTP_USER e SMTP_PASS.");
     return res.status(500).json({ ok: false, erro: "SMTP nao configurado" });
   }
@@ -1107,6 +1131,8 @@ app.get("/api/diario", auth, (req, res) => {
 
 function startServer(port = 3000) {
   garantirCategoriasPadrao();
+
+  console.log("Banco em uso:", db.DB_PATH || "(nao informado)");
 
   if (!rendimentoAgendadorIniciado) {
     rendimentoService.iniciarAgendadorRendimento();
