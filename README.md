@@ -2,9 +2,9 @@
 Aplicativo desktop de controle financeiro pessoal simples, moderno e eficiente.
 
 📌 Sobre o projeto
-O CashControl foi desenvolvido para ajudar no gerenciamento financeiro do dia a dia, permitindo que o usuário tenha mais controle e organização sobre seu dinheiro.
+O CashControl é um aplicativo desenvolvido para ajudar no gerenciamento financeiro do dia a dia, permitindo que o usuário tenha mais controle e organização sobre seu dinheiro.
 
-Com uma interface intuitiva, o sistema facilita o registro de receitas e despesas, além de oferecer uma visão clara da situação financeira.
+Com uma interface intuitiva e visual, o sistema facilita o registro de receitas, despesas e o acompanhamento da evolução financeira.
 
 🚀 Funcionalidades
 💸 Registro de entradas e saídas
@@ -20,7 +20,14 @@ Com uma interface intuitiva, o sistema facilita o registro de receitas e despesa
 🖥️ Aplicativo desktop (.exe)
 
 🧠 Diferencial
-O CashControl não é apenas um sistema web — ele foi transformado em um aplicativo desktop, podendo ser utilizado como um programa comum, sem necessidade de configurações técnicas.
+O CashControl não é apenas um sistema web — ele foi transformado em um aplicativo desktop, podendo ser utilizado como um programa comum, sem necessidade de configuração técnica.
+
+📸 Preview
+🏠 Dashboard
+
+💸 Transações
+
+🏦 Caixinhas
 
 ⚙️ Tecnologias
 JavaScript
@@ -31,8 +38,3 @@ SQLite
 
 Electron
 
-🎯 Objetivo
-Facilitar o controle financeiro pessoal de forma simples, visual e acessível, ajudando o usuário a tomar decisões mais conscientes.
-
-📦 Instalação
-Baixe o instalador .exe na aba de releases e execute normalmente.
