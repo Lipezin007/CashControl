@@ -60,7 +60,7 @@ if (filtroMes && !filtroMes.value) {
     filtroMes.value = mesAtualYYYYMM();
 }
 
-// Atualiza grÃ¡ficos ao alterar o mÃªs
+// Atualiza gráficos ao alterar o mês
 filtroMes?.addEventListener("change", async () => {
     if (typeof refreshTudo === "function") {
         await refreshTudo();
@@ -336,10 +336,10 @@ if (origemInput) {
     origemInput?.addEventListener("change", toggleCartaoUI);
 }
 
-// executa quando abrir a pÃ¡gina
+// executa quando abrir a página
 toggleCartaoUI();
 origemInput?.addEventListener("change", toggleCartaoUI);
-toggleCartaoUI(); // jÃ¡ aplica ao abrir a pÃ¡gina
+toggleCartaoUI(); // já aplica ao abrir a página
 
 if (dataInput) {
     dataInput.valueAsDate = new Date();
@@ -359,7 +359,7 @@ async function carregarRelatorioCategorias() {
             ((x.total_saidas / x.meta) * 100).toFixed(0) :
             0;
 
-        const alerta = perc >= 100 ? "âš " : "";
+        const alerta = perc >= 100 ? "⚠️" : "";
 
         return `
       <tr>
@@ -573,7 +573,7 @@ async function carregarTransacoes() {
   `).join("");
 }
 
-// DelegaÃ§Ã£o de eventos pros botÃµes da tabela
+// Delegação de eventos pros botões da tabela
 lista?.addEventListener("click", async (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
@@ -590,7 +590,7 @@ lista?.addEventListener("click", async (e) => {
   }
 
   if (action === "edit") {
-    // pega a transaÃ§Ã£o atual pra preencher o form
+    // pega a transação atual pra preencher o form
     const trans = await api(`/api/movimentacoes?mes=${encodeURIComponent(filtroMes.value)}`).then(r=>r.json());
     const t = trans.find(x => x.id === id);
     if (!t) return;
@@ -877,7 +877,7 @@ btnSyncRendimento?.addEventListener("click", async () => {
   resetFormCaixinha();
 
 })();
-// ====== RECORRÃŠNCIAS (visualizaÃ§Ã£o/teste) ======
+// ====== RECORRÊNCIAS (visualização/teste) ======
 const formRec = document.querySelector("#formRec");
 const listaRec = document.querySelector("#listaRec");
 const rDesc = document.querySelector("#r_descricao");
@@ -1052,7 +1052,7 @@ async function carregarGraficoCategorias() {
   const saidas = dados.map(x => Number(x.total_saidas || 0));
   const entradas = dados.map(x => Number(x.total_entradas || 0));
 
-  // destrÃ³i o antigo antes de criar outro (evita bug)
+  // destrói o antigo antes de criar outro (evita bug)
   if (chartCats) chartCats.destroy();
 
   chartCats = new Chart(chartCanvas, {
@@ -1136,7 +1136,7 @@ async function carregarMetas(){
       ? ((m.gasto_mes / m.valor_meta) * 100).toFixed(0)
       : 0;
 
-    const alerta = perc > 100 ? "âš " : "";
+    const alerta = perc > 100 ? "⚠️" : "";
 
     return `
       <tr>
@@ -1277,7 +1277,7 @@ async function refreshTudo() {
   }
 }
 
-// ===== CARTÃƒO (visualizaÃ§Ã£o/teste) =====
+// ===== CARTÃO (visualização/teste) =====
 const formCartao = document.querySelector("#formCartao");
 const cNome = document.querySelector("#c_nome");
 const cLimite = document.querySelector("#c_limite");
@@ -1687,9 +1687,9 @@ document.addEventListener("click", async (e) => {
   timeline.innerHTML = parcelas.map(p => {
 
     const statusIcon =
-      p.status === "paga" ? "âœ”" :
-      p.status === "aberta" ? "â³" :
-      "â€¢";
+      p.status === "paga" ? "✔️" :
+      p.status === "aberta" ? "⏳" :
+      "•";
 
     return `
       <div class="timeline-item">

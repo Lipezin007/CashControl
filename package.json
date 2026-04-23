@@ -1,6 +1,6 @@
 {
   "name": "cashcontrol",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Aplicativo desktop de controle financeiro pessoal que permite gerenciar receitas, despesas, cartões e caixinhas de economia de forma simples e visual. Conta com gráficos interativos, organização por categorias e acompanhamento da evolução do saldo ao longo do tempo, tudo em um ambiente moderno e intuitivo.",
   "main": "electron/main.js",
   "scripts": {
