@@ -2,16 +2,12 @@
   "name": "cashcontrol",
   "version": "1.0.2",
   "description": "Aplicativo desktop de controle financeiro pessoal que permite gerenciar receitas, despesas, cartões e caixinhas de economia de forma simples e visual. Conta com gráficos interativos, organização por categorias e acompanhamento da evolução do saldo ao longo do tempo, tudo em um ambiente moderno e intuitivo.",
-  "main": "electron/main.js",
+  "main": "backend/bootstrap.js",
   "scripts": {
-    "start": "electron-forge start",
+    "start": "node backend/bootstrap.js",
+    "dev": "nodemon backend/bootstrap.js",
     "start:backend": "node backend/bootstrap.js",
-    "dev:backend": "nodemon backend/bootstrap.js",
-    "reset-db": "node backend/reset-db.js",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
-    "make:x64": "electron-forge make --arch=x64",
-    "make:ia32": "electron-forge make --arch=ia32"
+    "dev:backend": "nodemon backend/bootstrap.js"
   },
   "keywords": [],
   "author": "NexControl",
@@ -19,50 +15,15 @@
   "type": "commonjs",
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^12.6.2",
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^6.9.16",
-    "pdfkit": "^0.17.2"
+    "pdfkit": "^0.17.2",
+    "pg": "^8.13.0"
   },
   "devDependencies": {
-    "@electron-forge/cli": "^7.11.1",
-    "@electron-forge/maker-squirrel": "^7.11.1",
-    "@electron-forge/maker-zip": "^7.11.1",
-    "@electron/rebuild": "^4.0.3",
-    "electron": "^41.0.3",
-    "electron-squirrel-startup": "^1.0.1",
     "nodemon": "^3.1.14"
-  },
-  "overrides": {
-    "tar-fs": "^2.1.3",
-    "tmp": "^0.2.4",
-    "braces": "^3.0.3",
-    "ejs": "^3.1.10",
-    "minimatch": "^10.2.1",
-    "semver": "^7.7.3"
-  },
-  "config": {
-    "forge": {
-      "packagerConfig": {
-        "icon": "assets/icon",
-        "executableName": "CashControl"
-      },
-      "makers": [
-        {
-          "name": "@electron-forge/maker-squirrel",
-          "config": {
-            "name": "CashControl",
-            "setupExe": "CashControlSetup.exe"
-          }
-        },
-        {
-          "name": "@electron-forge/maker-zip",
-          "platforms": ["win32"]
-        }
-      ]
-    }
   },
   "repository": {
     "type": "git",

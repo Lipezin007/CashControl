@@ -1,3 +1,3 @@
 const { startServer } = require("./server");
 
-startServer(3000);
+startServer(process.env.PORT || 3000);

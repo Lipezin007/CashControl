@@ -2,7 +2,14 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Cash Control - Acesso</title>
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#0ea5e9" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="CashControl" />
+<link rel="apple-touch-icon" href="/logo.png" />
 <link rel="stylesheet" href="style.css">
 </head>
 
@@ -58,5 +65,10 @@
 </div>
 
 <script src="auth.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }
+</script>
 </body>
 </html>
