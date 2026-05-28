@@ -19,8 +19,6 @@
 
 ## Screenshots
 
-> _Adicione prints do app aqui — basta arrastar as imagens para esta seção no GitHub._
-
 | Dashboard | Transações |
 |:---------:|:----------:|
 | ![dashboard](docs/screenshots/dashboard.png) | ![transacoes](docs/screenshots/transacoes.png) |
