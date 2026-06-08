@@ -4,7 +4,16 @@ const OpenAI = require("openai");
 const queries = require("./queries");
 const pool = require("./db");
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let _openai = null;
+function getOpenAI() {
+  if (!_openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY não configurada no .env");
+    }
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openai;
+}
 
 // ===== TOOL DEFINITIONS =====
 
@@ -336,6 +345,8 @@ router.post("/chat", async (req, res) => {
       { role: "system", content: SYSTEM_PROMPT },
       ...safeMessages
     ];
+
+    const openai = getOpenAI();
 
     let response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
