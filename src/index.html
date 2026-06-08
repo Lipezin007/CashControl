@@ -470,5 +470,50 @@
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   }
 </script>
+
+<!-- ===== LION AI CHAT ===== -->
+<button id="lion-toggle" class="lion-toggle" title="Falar com o Lion">
+  <span class="lion-toggle-icon">🦁</span>
+  <span class="lion-toggle-label">Lion</span>
+</button>
+
+<div id="lion-panel" class="lion-panel">
+  <div class="lion-header">
+    <div class="lion-header-info">
+      <span class="lion-header-avatar">🦁</span>
+      <div>
+        <div class="lion-header-name">Lion</div>
+        <div class="lion-header-sub">Assistente Financeiro</div>
+      </div>
+    </div>
+    <div class="lion-header-actions">
+      <button id="lion-clear" class="lion-icon-btn" title="Limpar conversa">🗑</button>
+      <button class="lion-icon-btn" id="lion-close-btn" title="Fechar">✕</button>
+    </div>
+  </div>
+
+  <div id="lion-messages" class="lion-messages"></div>
+
+  <div class="lion-input-area">
+    <textarea
+      id="lion-input"
+      class="lion-input"
+      placeholder="Pergunte algo ao Lion... (Enter para enviar)"
+      rows="1"
+    ></textarea>
+    <button id="lion-send" class="lion-send-btn" title="Enviar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script src="lion.js"></script>
+<script>
+  document.getElementById("lion-close-btn").addEventListener("click", () => {
+    document.getElementById("lion-toggle").click();
+  });
+</script>
 </body>
 </html>

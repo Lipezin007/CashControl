@@ -780,6 +780,9 @@ app.get("/api/mensal", auth, async (req, res) => {
   }
 });
 
+const lionRouter = require("./lionRouter");
+app.use("/api/lion", auth, lionRouter);
+
 const PDFDocument = require("pdfkit");
 
 app.get("/api/relatorio-pdf", auth, async (req, res) => {
