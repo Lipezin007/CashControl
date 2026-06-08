@@ -18,416 +18,448 @@
 <body>
 
 <div class="topbar">
-  <div class="top-left">
-    <img src="/logo.png" class="logo" alt="Cash Control">
-    <h1>Cash Control</h1>
-  </div>
+<div class="top-left">
+<img src="/logo.png" class="logo" alt="Cash Control">
+<h1>Cash Control</h1>
+</div>
 
-  <div class="top-right">
-    <div class="mes-box">
-      <label>Mês</label>
-      <input type="month" id="filtroMes">
-    </div>
+<div class="top-right">
+<div class="mes-box">
+<label>Mês</label>
+<input type="month" id="filtroMes">
+</div>
 
-    <button id="btnPDF" class="btn ghost">PDF</button>
-    <button class="btn sair" onclick="logout()">Sair</button>
-  </div>
+<button class="btn-tema" id="btnTema" title="Alternar tema" onclick="toggleTema()">🌙</button>
+<button id="btnPDF" class="btn ghost">PDF</button>
+<button class="btn sair" onclick="logout()">Sair</button>
+</div>
 </div>
 
 <div class="dashboard">
 
-  <div class="tabs">
-    <button class="tab active" data-tab="transacoes">Transações</button>
-    <button class="tab" data-tab="caixinhas">Caixinhas</button>
-    <button class="tab" data-tab="aba-dashboard">Dashboard</button>
-    <button class="tab" data-tab="graficos">Gráficos</button>
-  </div>
+<div class="tabs">
+<button class="tab active" data-tab="transacoes">Transações</button>
+<button class="tab" data-tab="caixinhas">Caixinhas</button>
+<button class="tab" data-tab="aba-dashboard">Dashboard</button>
+<button class="tab" data-tab="graficos">Gráficos</button>
+</div>
 
-  <div class="tab-content active" id="transacoes">
+<div class="tab-content active" id="transacoes">
 
-  <div class="grid-transacoes">
+<div class="grid-transacoes">
 
-  <div class="coluna-transacoes coluna-principal">
+<div class="coluna-transacoes coluna-principal">
 
-  <section class="card box grande">
-  <h2>Nova Transação</h2>
+<section class="card box grande">
+<h2>Nova Transação</h2>
 
-  <div class="transacoes-acoes">
-    <button id="abrirModalRec" class="btn-secundario">
-      + Nova Recorrência
-    </button>
-    <button id="btnNovaCategoria" class="btn-secundario">+ Nova Categoria</button>
-  </div>
+<div class="transacoes-acoes">
+<button id="abrirModalRec" class="btn-secundario">
++ Nova Recorrência
+</button>
+<button id="btnNovaCategoria" class="btn-secundario">+ Nova Categoria</button>
+</div>
 
-  <form id="form" class="form-grid">
-    <input id="id" type="hidden">
+<form id="form" class="form-grid">
+<input id="id" type="hidden">
 
-    <div class="full">
-      <label>Descrição</label>
-      <input id="descricao" placeholder="Ex: Salário, Mercado..." required>
-    </div>
+<div class="full">
+<label>Descrição</label>
+<input id="descricao" placeholder="Ex: Salário, Mercado..." required>
+</div>
 
-    <div>
-      <label>Valor (R$)</label>
-      <input id="valor" type="number" step="0.01" required>
-    </div>
+<div>
+<label>Valor (R$)</label>
+<input id="valor" type="number" step="0.01" required>
+</div>
 
-    <div>
-      <label>Tipo</label>
-      <select id="tipo">
-        <option value="entrada">Entrada</option>
-        <option value="saida">Saída</option>
-      </select>
-    </div>
+<div>
+<label>Tipo</label>
+<select id="tipo">
+<option value="entrada">Entrada</option>
+<option value="saida">Saída</option>
+</select>
+</div>
 
-    <div>
-      <label>Origem</label>
-      <select id="origem">
-        <option value="pix">PIX</option>
-        <option value="debito">Débito</option>
-        <option value="dinheiro">Dinheiro</option>
-        <option value="cartao_credito">Cartão de Crédito</option>
-      </select>
-    </div>
+<div>
+<label>Origem</label>
+<select id="origem">
+<option value="pix">PIX</option>
+<option value="debito">Débito</option>
+<option value="dinheiro">Dinheiro</option>
+<option value="cartao_credito">Cartão de Crédito</option>
+</select>
+</div>
 
-    <div>
-      <label>Categoria</label>
-      <select id="categoria"></select>
-    </div>
+<div>
+<label>Categoria</label>
+<select id="categoria"></select>
+</div>
 
-    <div>
-      <label>Data</label>
-      <input id="data" type="date">
-    </div>
+<div>
+<label>Data</label>
+<input id="data" type="date">
+</div>
 
-    <div id="areaCartao" class="full">
-      <div>
-        <label>Cartão</label>
-        <select id="cartaoSelect"></select>
-      </div>
+<div id="areaCartao" class="full">
+<div>
+<label>Cartão</label>
+<select id="cartaoSelect"></select>
+</div>
 
-      <div>
-        <label>Parcelas</label>
-        <input id="parcelasInput" type="number" value="1">
-      </div>
+<div>
+<label>Parcelas</label>
+<input id="parcelasInput" type="number" value="1">
+</div>
 
-      <div>
-        <label>Juros Mensal</label>
-        <input id="jurosInput" type="number" step="0.001" value="0">
-      </div>
-    </div>
+<div>
+<label>Juros Mensal</label>
+<input id="jurosInput" type="number" step="0.001" value="0">
+</div>
+</div>
 
-    <button type="submit" class="salvar full">Salvar</button>
-  </form>
+<button type="submit" class="salvar full">Salvar</button>
+</form>
 </section>
 
-  <!-- METAS -->
-  <section class="card box">
-    <h2>Metas</h2>
-    <select id="meta_categoria"></select>
-    <input type="number" id="meta_valor" placeholder="Valor da meta">
-    <button id="btnMeta">Salvar</button>
-    <table>
-      <thead>
-        <tr>
-          <th>Categoria</th>
-          <th>Saídas</th>
-          <th>Entradas</th>
-          <th>Meta</th>
-          <th>%</th>
-        </tr>
-      </thead>
-      <tbody id="metasBody"></tbody>
-    </table>
-  </section>
+<!-- METAS -->
+<section class="card box">
+<h2>Metas</h2>
+<select id="meta_categoria"></select>
+<input type="number" id="meta_valor" placeholder="Valor da meta">
+<button id="btnMeta">Salvar</button>
+<table>
+<thead>
+<tr>
+<th>Categoria</th>
+<th>Saídas</th>
+<th>Entradas</th>
+<th>Meta</th>
+<th>%</th>
+</tr>
+</thead>
+<tbody id="metasBody"></tbody>
+</table>
+</section>
 
-  </div>
+</div>
 
-  <div class="coluna-transacoes coluna-lateral">
+<div class="coluna-transacoes coluna-lateral">
 
-  <!-- RESUMO -->
-  <section class="card box pequena">
-    <h2>Resumo do mês</h2>
-    <div id="resumo"></div>
-  </section>
+<!-- RESUMO -->
+<section class="card box pequena">
+<h2>Resumo do mês</h2>
+<div id="resumo"></div>
+</section>
 
 <!-- CARTÃO -->
 <section class="card box">
-  <h2>Cartão</h2>
+<h2>Cartão</h2>
 
-  <div class="acoes-cartao">
-    <button id="abrirModalCartao" class="btn-secundario">
-      + Criar Cartão
-    </button>
-    <button id="btnEditarCartao" class="btn-secundario">Editar cartão</button>
-    <button id="btnExcluirCartao" class="btn-secundario">Excluir cartão</button>
-  </div>
+<div class="acoes-cartao">
+<button id="abrirModalCartao" class="btn-secundario">
++ Criar Cartão
+</button>
+<button id="btnEditarCartao" class="btn-secundario">Editar cartão</button>
+<button id="btnExcluirCartao" class="btn-secundario">Excluir cartão</button>
+</div>
 
-  <div class="linha-cartao">
-    <select id="fat_cartao"></select>
-    <input type="month" id="fat_mes">
-    <button id="btnFat">Ver fatura</button>
-    <button id="btnPagarFatura">Pagar Fatura</button>
-   
-  </div>
+<div class="linha-cartao">
+<select id="fat_cartao"></select>
+<input type="month" id="fat_mes">
+<button id="btnFat">Ver fatura</button>
+<button id="btnPagarFatura">Pagar Fatura</button>
+</div>
 
-  <div id="controleCartao"></div>
-  <div id="fat_total"></div>
+<!-- CARTÃO VISUAL -->
+<div class="credit-card-visual" id="creditCardVisual" style="display:none;">
+<div class="card-top-row">
+<div class="card-chip"></div>
+<div class="card-brand-logo">
+<div class="circle1"></div>
+<div class="circle2"></div>
+</div>
+</div>
+<div class="card-number-row">
+<div class="card-number" id="ccNumber">•••• •••• •••• ••••</div>
+</div>
+<div class="card-bottom-row">
+<div>
+<div class="card-holder-label">Cartão</div>
+<div class="card-holder-name" id="ccName">—</div>
+</div>
+<div>
+<div class="card-limit-label">Limite</div>
+<div class="card-limit-value" id="ccLimit">—</div>
+</div>
+</div>
+<div class="card-limit-bar-wrap" id="ccBarWrap" style="display:none;">
+<div class="bar-label">
+<span>Usado</span>
+<span id="ccBarPct">0%</span>
+</div>
+<div class="card-limit-bar-bg">
+<div class="card-limit-bar-fill" id="ccBarFill" style="width:0%"></div>
+</div>
+</div>
+</div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Parc</th>
-        <th>Descrição</th>
-        <th>Categoria</th>
-        <th>Mês</th>
-        <th>Valor</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody id="fat_itens"></tbody>
-  </table>
-    <h4>Previsão de parcelas</h4>
-    <div id="previsaoCartao"></div>
+<div id="controleCartao"></div>
+<div id="fat_total"></div>
+
+<table>
+<thead>
+<tr>
+<th>Parc</th>
+<th>Descrição</th>
+<th>Categoria</th>
+<th>Mês</th>
+<th>Valor</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody id="fat_itens"></tbody>
+</table>
+<h4>Previsão de parcelas</h4>
+<div id="previsaoCartao"></div>
 </section>
 
-  </div>
+</div>
 
-  </div>
+</div>
 
+<!-- TRANSAÇÕES -->
+<section class="card wide">
+<h2>Transações</h2>
+<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Descrição</th>
+<th>Categoria</th>
+<th>Tipo</th>
+<th>Valor</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody id="lista"></tbody>
+</table>
+</section>
 
-  <!-- TRANSAÇÕES -->
-  <section class="card wide">
-    <h2>Transações</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Data</th>
-          <th>Descrição</th>
-          <th>Categoria</th>
-          <th>Tipo</th>
-          <th>Valor</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="lista"></tbody>
-    </table>
-  </section>
-
-  </div>
+</div>
 
 <!-- CAIXINHAS-->
 
-  <div class="tab-content" id="caixinhas">
-    <section class="card wide">
-      <h2>Caixinhas</h2>
-
-      <form id="formCaixinha" class="caixinha-form">
-        <input id="caixinhaId" type="hidden">
-
-        <div>
-          <label>Nome</label>
-          <input id="caixinhaNome" placeholder="Ex: Viagem" required>
-        </div>
-
-        <div>
-          <label>Objetivo (R$)</label>
-          <input id="caixinhaObjetivo" type="number" step="0.01" placeholder="Opcional">
-        </div>
-
-        <div>
-          <label>Rendimento</label>
-          <select id="caixinhaRendimentoTipo">
-            <option value="CDI">CDI</option>
-            <option value="CDB">CDB</option>
-            <option value="Poupanca">Poupança</option>
-          </select>
-        </div>
-
-        <div>
-          <label>Instituição</label>
-          <input id="caixinhaInstituicao" placeholder="Ex: Nubank">
-        </div>
-
-        <div>
-          <label>Produto</label>
-          <input id="caixinhaProduto" placeholder="Ex: Conta">
-        </div>
-
-        <div>
-          <label>% do índice</label>
-          <input id="caixinhaRendimentoPercentual" type="number" step="0.01" value="100">
-        </div>
-
-        <div class="caixinha-auto-check">
-          <label>
-            <input id="caixinhaAutoPercentual" type="checkbox">
-            Usar taxa automática por instituição
-          </label>
-        </div>
-
-        <button type="submit" class="salvar">+ Nova Caixinha</button>
-        <button type="button" id="btnSyncRendimento" class="btn-secundario">Atualizar taxas agora</button>
-      </form>
-
-      <div id="listaCaixinhas" class="caixinhas-grid"></div>
-    </section>
-  </div>
-
-  <div class="tab-content" id="aba-dashboard">
-
-  <!-- PREVISÃO -->
-  <section class="card small">
-    <h2>Previsão</h2>
-    <div id="previsao"></div>
-  </section>
-
-  <!-- DASHBOARD -->
-  <section class="card small">
-    <h2>Dashboard</h2>
-    <div id="dashboard"></div>
-  </section>
-
-  </div>
-
-  <div class="tab-content" id="graficos">
-
-  <!-- GRÁFICO -->
-  <section class="card wide">
-    <h2>Gráfico por categoria</h2>
-    <canvas id="chartCats"></canvas>
-  </section>
-
-  <!-- GRÁFICO MENSAL -->
+<div class="tab-content" id="caixinhas">
 <section class="card wide">
-  <h2>Evolução Mensal</h2>
-  <canvas id="chartMensal" height="100"></canvas>
+<h2>Caixinhas</h2>
+
+<form id="formCaixinha" class="caixinha-form">
+<input id="caixinhaId" type="hidden">
+
+<div>
+<label>Nome</label>
+<input id="caixinhaNome" placeholder="Ex: Viagem" required>
+</div>
+
+<div>
+<label>Objetivo (R$)</label>
+<input id="caixinhaObjetivo" type="number" step="0.01" placeholder="Opcional">
+</div>
+
+<div>
+<label>Rendimento</label>
+<select id="caixinhaRendimentoTipo">
+<option value="CDI">CDI</option>
+<option value="CDB">CDB</option>
+<option value="Poupanca">Poupança</option>
+</select>
+</div>
+
+<div>
+<label>Instituição</label>
+<input id="caixinhaInstituicao" placeholder="Ex: Nubank">
+</div>
+
+<div>
+<label>Produto</label>
+<input id="caixinhaProduto" placeholder="Ex: Conta">
+</div>
+
+<div>
+<label>% do índice</label>
+<input id="caixinhaRendimentoPercentual" type="number" step="0.01" value="100">
+</div>
+
+<div class="caixinha-auto-check">
+<label>
+<input id="caixinhaAutoPercentual" type="checkbox">
+Usar taxa automática por instituição
+</label>
+</div>
+
+<button type="submit" class="salvar">+ Nova Caixinha</button>
+<button type="button" id="btnSyncRendimento" class="btn-secundario">Atualizar taxas agora</button>
+</form>
+
+<div id="listaCaixinhas" class="caixinhas-grid"></div>
+</section>
+</div>
+
+<div class="tab-content" id="aba-dashboard">
+
+<!-- PREVISÃO -->
+<section class="card small">
+<h2>Previsão</h2>
+<div id="previsao"></div>
+</section>
+
+<!-- DASHBOARD -->
+<section class="card small">
+<h2>Dashboard</h2>
+<div id="dashboard"></div>
+</section>
+
+</div>
+
+<div class="tab-content" id="graficos">
+
+<!-- GRÁFICO -->
+<section class="card wide">
+<h2>Gráfico por categoria</h2>
+<canvas id="chartCats"></canvas>
+</section>
+
+<!-- GRÁFICO MENSAL -->
+<section class="card wide">
+<h2>Evolução Mensal</h2>
+<canvas id="chartMensal" height="100"></canvas>
 </section>
 
 <section class="card wide">
-  <h2>Evolução Diária</h2>
-  <canvas id="graficoDiario" height="100"></canvas>
+<h2>Evolução Diária</h2>
+<canvas id="graficoDiario" height="100"></canvas>
 </section>
 
 <section class="card wide">
-  <div class="grafico-topo">
-    <h2>Evolução das Caixinhas</h2>
-    <div class="grafico-filtro">
-      <label for="caixinhaPeriodo">Período</label>
-      <select id="caixinhaPeriodo">
-        <option value="diario">Diária</option>
-        <option value="semanal">Semanal</option>
-        <option value="mensal" selected>Mensal</option>
-        <option value="anual">Anual</option>
-      </select>
-    </div>
-  </div>
-  <canvas id="chartCaixinhas" height="100"></canvas>
+<div class="grafico-topo">
+<h2>Evolução das Caixinhas</h2>
+<div class="grafico-filtro">
+<label for="caixinhaPeriodo">Período</label>
+<select id="caixinhaPeriodo">
+<option value="diario">Diária</option>
+<option value="semanal">Semanal</option>
+<option value="mensal" selected>Mensal</option>
+<option value="anual">Anual</option>
+</select>
+</div>
+</div>
+<canvas id="chartCaixinhas" height="100"></canvas>
 </section>
-  </div>
+</div>
 
 <!-- MODAL'S -->
 
 <!-- MODAL PARCELAS -->
 <div id="modalParcelas" class="modal">
-  <div class="modal-content">
+<div class="modal-content">
 
-    <span id="fecharParcelas" class="fechar">&times;</span>
+<span id="fecharParcelas" class="fechar">&times;</span>
 
-    <h3>Parcelas da compra</h3>
+<h3>Parcelas da compra</h3>
 
-    <div id="parcelasTimeline"></div>
+<div id="parcelasTimeline"></div>
 
-  </div>
+</div>
 </div>
 
 <!-- MODAL CRIAR CARTÃO -->
 <div id="modalCartao" class="modal">
-  <div class="modal-content">
+<div class="modal-content">
 
-    <div class="modal-header">
-      <h3 id="tituloModalCartao">Criar Cartão</h3>
-      <span id="fecharModalCartao" class="fechar">&times;</span>
-    </div>
+<div class="modal-header">
+<h3 id="tituloModalCartao">Criar Cartão</h3>
+<span id="fecharModalCartao" class="fechar">&times;</span>
+</div>
 
-    <form id="formCartao">
-      <div class="campo-cartao">
-        <label for="c_nome">Nome do cartão</label>
-        <input id="c_nome" placeholder="Ex: Nubank" required>
-      </div>
-      <div class="campo-cartao">
-        <label for="c_limite">Limite</label>
-        <input id="c_limite" type="number" step="0.01" placeholder="Ex: 2500.00">
-      </div>
-      <div class="campo-cartao">
-        <label for="c_fech">Dia de fechamento</label>
-        <input id="c_fech" type="number" min="1" max="28" placeholder="1 a 28">
-      </div>
-      <div class="campo-cartao">
-        <label for="c_venc">Dia de vencimento</label>
-        <input id="c_venc" type="number" min="1" max="28" placeholder="1 a 28">
-      </div>
-      <button type="submit" id="btnSalvarCartao">Criar</button>
-    </form>
+<form id="formCartao">
+<div class="campo-cartao">
+<label for="c_nome">Nome do cartão</label>
+<input id="c_nome" placeholder="Ex: Nubank" required>
+</div>
+<div class="campo-cartao">
+<label for="c_limite">Limite</label>
+<input id="c_limite" type="number" step="0.01" placeholder="Ex: 2500.00">
+</div>
+<div class="campo-cartao">
+<label for="c_fech">Dia de fechamento</label>
+<input id="c_fech" type="number" min="1" max="28" placeholder="1 a 28">
+</div>
+<div class="campo-cartao">
+<label for="c_venc">Dia de vencimento</label>
+<input id="c_venc" type="number" min="1" max="28" placeholder="1 a 28">
+</div>
+<button type="submit" id="btnSalvarCartao">Criar</button>
+</form>
 
-  </div>
+</div>
 </div>
 
 <!-- MODAL RECORRÊNCIAS -->
 <div id="modalRec" class="modal">
-  <div class="modal-content modal-grande">
+<div class="modal-content modal-grande">
 
-    <div class="modal-header">
-      <h3>Recorrências</h3>
-      <span id="fecharModalRec" class="fechar">&times;</span>
-    </div>
+<div class="modal-header">
+<h3>Recorrências</h3>
+<span id="fecharModalRec" class="fechar">&times;</span>
+</div>
 
-    <div id="resumoRec" style="margin-bottom:10px;"></div>
+<div id="resumoRec" style="margin-bottom:10px;"></div>
 
-    <form id="formRec" class="form-rec">
-      <input id="r_id" type="hidden">
+<form id="formRec" class="form-rec">
+<input id="r_id" type="hidden">
 
-      <input id="r_descricao" placeholder="Descrição (ex: Salário)" required>
-      <input id="r_valor" type="number" step="0.01" placeholder="Valor" required>
+<input id="r_descricao" placeholder="Descrição (ex: Salário)" required>
+<input id="r_valor" type="number" step="0.01" placeholder="Valor" required>
 
-      <select id="r_tipo" required>
-        <option value="entrada">Entrada</option>
-        <option value="saida">Saída</option>
-      </select>
+<select id="r_tipo" required>
+<option value="entrada">Entrada</option>
+<option value="saida">Saída</option>
+</select>
 
-      <select id="r_categoria"></select>
+<select id="r_categoria"></select>
 
-      <input id="r_dia" type="number" min="1" max="28" placeholder="Dia (1-28)" required>
+<input id="r_dia" type="number" min="1" max="28" placeholder="Dia (1-28)" required>
 
-      <label class="ativo-rec">
-        <input id="r_ativo" type="checkbox" checked>
-        Ativo
-      </label>
+<label class="ativo-rec">
+<input id="r_ativo" type="checkbox" checked>
+Ativo
+</label>
 
-      <button type="submit">Salvar</button>
-    </form>
+<button type="submit">Salvar</button>
+</form>
 
-    <div class="gerar-rec">
-      <input id="r_mes" type="month">
-      <button id="btnGerar" type="button">Gerar mês</button>
-    </div>
+<div class="gerar-rec">
+<input id="r_mes" type="month">
+<button id="btnGerar" type="button">Gerar mês</button>
+</div>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Dia</th>
-          <th>Descrição</th>
-          <th>Categoria</th>
-          <th>Tipo</th>
-          <th>Valor</th>
-          <th>Ativo</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="listaRec"></tbody>
-    </table>
+<table>
+<thead>
+<tr>
+<th>Dia</th>
+<th>Descrição</th>
+<th>Categoria</th>
+<th>Tipo</th>
+<th>Valor</th>
+<th>Ativo</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody id="listaRec"></tbody>
+</table>
 
-  </div>
+</div>
 </div>
 
 </div>
@@ -438,82 +470,155 @@
 <meta name="theme-color" content="#0b1220">
 
 <div id="modalPadrao" class="modal">
-  <div class="modal-box">
-    <h3 id="modalTitulo"></h3>
-    <p id="modalTexto"></p>
+<div class="modal-box">
+<h3 id="modalTitulo"></h3>
+<p id="modalTexto"></p>
 
-    <input id="modalInput" style="display:none;" />
+<input id="modalInput" style="display:none;" />
 
-    <div class="modal-botoes">
-      <button id="modalCancelar">Cancelar</button>
-      <button id="modalOk">OK</button>
-    </div>
-  </div>
+<div class="modal-botoes">
+<button id="modalCancelar">Cancelar</button>
+<button id="modalOk">OK</button>
+</div>
+</div>
 </div>
 
 <div id="modalCategoria" class="modal">
-  <div class="modal-box">
-    <h3>Nova categoria</h3>
+<div class="modal-box">
+<h3>Nova categoria</h3>
 
-    <input id="inputCategoria" placeholder="Nome da categoria">
+<input id="inputCategoria" placeholder="Nome da categoria">
 
-    <div class="modal-botoes">
-      <button id="cancelarCategoria">Cancelar</button>
-      <button id="salvarCategoria">Criar</button>
-    </div>
-  </div>
+<div class="modal-botoes">
+<button id="cancelarCategoria">Cancelar</button>
+<button id="salvarCategoria">Criar</button>
+</div>
+</div>
 </div>
 
 <script src="app.js?v=20260318-3"></script>
 <script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
+}
+
+/* ── Alternância de Tema ── */
+function toggleTema() {
+  const isLight = document.body.classList.toggle('theme-light');
+  localStorage.setItem('cc-tema', isLight ? 'light' : 'dark');
+  document.getElementById('btnTema').textContent = isLight ? '☀️' : '🌙';
+}
+(function() {
+  if (localStorage.getItem('cc-tema') === 'light') {
+    document.body.classList.add('theme-light');
+    const btn = document.getElementById('btnTema');
+    if (btn) btn.textContent = '☀️';
   }
+})();
+
+/* ── Cartão Visual ── */
+function atualizarCartaoVisual() {
+  const select = document.getElementById('fat_cartao');
+  const visual = document.getElementById('creditCardVisual');
+  if (!select || !visual) return;
+
+  const option = select.options[select.selectedIndex];
+  if (!option || !option.value) { visual.style.display = 'none'; return; }
+
+  visual.style.display = '';
+
+  // nome do cartão
+  const nomeEl = document.getElementById('ccName');
+  if (nomeEl) nomeEl.textContent = option.text || '—';
+
+  // tentar ler limite do controleCartao
+  setTimeout(() => {
+    const ctrl = document.getElementById('controleCartao');
+    if (!ctrl) return;
+    const txt = ctrl.innerText || '';
+
+    // busca "Limite: R$ X.XXX,XX" ou similar
+    const mLimite = txt.match(/Limite[^R]*R\$\s*([\d.,]+)/i);
+    const mUsado  = txt.match(/(?:Usado|Fatura)[^R]*R\$\s*([\d.,]+)/i);
+
+    const ccLimit = document.getElementById('ccLimit');
+    if (ccLimit && mLimite) ccLimit.textContent = 'R$ ' + mLimite[1];
+
+    const barWrap = document.getElementById('ccBarWrap');
+    if (barWrap && mLimite && mUsado) {
+      const lim  = parseFloat(mLimite[1].replace(/\./g,'').replace(',','.'));
+      const used = parseFloat(mUsado[1].replace(/\./g,'').replace(',','.'));
+      if (lim > 0) {
+        const pct = Math.min(100, Math.round((used / lim) * 100));
+        barWrap.style.display = '';
+        document.getElementById('ccBarFill').style.width = pct + '%';
+        document.getElementById('ccBarPct').textContent = pct + '%';
+      }
+    }
+  }, 400);
+}
+
+// Hook no select do cartão
+document.addEventListener('DOMContentLoaded', () => {
+  const fatCartao = document.getElementById('fat_cartao');
+  if (fatCartao) {
+    fatCartao.addEventListener('change', atualizarCartaoVisual);
+    // Observer para quando o app.js popula o select
+    const obs = new MutationObserver(() => {
+      if (fatCartao.options.length > 0) { atualizarCartaoVisual(); obs.disconnect(); }
+    });
+    obs.observe(fatCartao, { childList: true });
+  }
+});
 </script>
 
 <!-- ===== LION AI CHAT ===== -->
 <button id="lion-toggle" class="lion-toggle" title="Falar com o Lion">
-  <span class="lion-toggle-icon">🦁</span>
-  <span class="lion-toggle-label">Lion</span>
+<span class="lion-toggle-icon">
+  <img src="/logo.png" alt="Lion" onerror="this.parentElement.textContent='🦁'">
+</span>
+<span class="lion-toggle-label">Lion</span>
 </button>
 
 <div id="lion-panel" class="lion-panel">
-  <div class="lion-header">
-    <div class="lion-header-info">
-      <span class="lion-header-avatar">🦁</span>
-      <div>
-        <div class="lion-header-name">Lion</div>
-        <div class="lion-header-sub">Assistente Financeiro</div>
-      </div>
-    </div>
-    <div class="lion-header-actions">
-      <button id="lion-clear" class="lion-icon-btn" title="Limpar conversa">🗑</button>
-      <button class="lion-icon-btn" id="lion-close-btn" title="Fechar">✕</button>
-    </div>
-  </div>
+<div class="lion-header">
+<div class="lion-header-info">
+<span class="lion-header-avatar">
+  <img src="/logo.png" alt="Lion" onerror="this.parentElement.textContent='🦁'">
+</span>
+<div>
+<div class="lion-header-name">Lion</div>
+<div class="lion-header-sub">Assistente Financeiro</div>
+</div>
+</div>
+<div class="lion-header-actions">
+<button id="lion-clear" class="lion-icon-btn" title="Limpar conversa">🗑</button>
+<button class="lion-icon-btn" id="lion-close-btn" title="Fechar">✕</button>
+</div>
+</div>
 
-  <div id="lion-messages" class="lion-messages"></div>
+<div id="lion-messages" class="lion-messages"></div>
 
-  <div class="lion-input-area">
-    <textarea
-      id="lion-input"
-      class="lion-input"
-      placeholder="Pergunte algo ao Lion... (Enter para enviar)"
-      rows="1"
-    ></textarea>
-    <button id="lion-send" class="lion-send-btn" title="Enviar">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-      </svg>
-    </button>
-  </div>
+<div class="lion-input-area">
+<textarea
+id="lion-input"
+class="lion-input"
+placeholder="Pergunte algo ao Lion... (Enter para enviar)"
+rows="1"
+></textarea>
+<button id="lion-send" class="lion-send-btn" title="Enviar">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+</svg>
+</button>
+</div>
 </div>
 
 <script src="lion.js"></script>
 <script>
-  document.getElementById("lion-close-btn").addEventListener("click", () => {
-    document.getElementById("lion-toggle").click();
-  });
+document.getElementById("lion-close-btn").addEventListener("click", () => {
+  document.getElementById("lion-toggle").click();
+});
 </script>
 </body>
 </html>
