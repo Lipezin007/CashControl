@@ -1,4 +1,4 @@
-const CACHE_NAME = "cashcontrol-v1";
+const CACHE_NAME = "cashcontrol-v2";
 
 // Assets da interface que ficam em cache (app shell)
 const STATIC_ASSETS = [
@@ -7,6 +7,7 @@ const STATIC_ASSETS = [
   "/login.html",
   "/style.css",
   "/app.js",
+  "/lion.js",
   "/auth.js",
   "/logo.png",
   "/favicon.ico",
