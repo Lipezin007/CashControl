@@ -3,29 +3,29 @@
 ========================= */
 
 :root {
-  --bg-primary:      #060b16;
-  --bg-secondary:    #0a1020;
-  --bg-card:         #0d1628;
-  --bg-card-hover:   #111f36;
-  --bg-input:        #0b1525;
-  --bg-sidebar:      #080e1a;
+  --bg-primary:      #09090f;
+  --bg-secondary:    #0c0c18;
+  --bg-card:         #10101f;
+  --bg-card-hover:   #141428;
+  --bg-input:        #0d0d1c;
+  --bg-sidebar:      #070710;
 
-  --accent-cyan:     #00e5ff;
-  --accent-purple:   #8b5cf6;
-  --accent-gradient: linear-gradient(135deg, #00e5ff, #8b5cf6);
+  --accent-cyan:     #00d4ff;
+  --accent-purple:   #7c3aed;
+  --accent-gradient: linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%);
 
-  --text-primary:    #e6edf7;
-  --text-secondary:  #8aa5c0;
-  --text-muted:      #4a6070;
+  --text-primary:    #e8eaf6;
+  --text-secondary:  #8892b0;
+  --text-muted:      #4a5070;
 
-  --border-color:    rgba(0, 229, 255, 0.15);
-  --border-subtle:   rgba(255, 255, 255, 0.06);
+  --border-color:    rgba(124, 58, 237, 0.2);
+  --border-subtle:   rgba(255, 255, 255, 0.05);
 
-  --entrada-color:   #10b981;
-  --saida-color:     #ef4444;
+  --entrada-color:   #22c55e;
+  --saida-color:     #f43f5e;
 
-  --glow-cyan:       rgba(0, 229, 255, 0.18);
-  --glow-purple:     rgba(139, 92, 246, 0.18);
+  --glow-cyan:       rgba(0, 212, 255, 0.12);
+  --glow-purple:     rgba(124, 58, 237, 0.15);
 
   --lion-primary:    #f59e0b;
   --lion-dark:       #d97706;
@@ -78,7 +78,7 @@ body {
 }
 
 body:not(.login):not(.theme-light) {
-  background: linear-gradient(120deg, #060b16, #0a1730, #102545, #081426, #060b16);
+  background: linear-gradient(120deg, #09090f, #0c0c18, #100e20, #0a0816, #09090f);
   background-size: 240% 240%;
   animation: appMainBgShift 24s ease-in-out infinite;
 }
@@ -88,8 +88,8 @@ body:not(.login):not(.theme-light)::before {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(1200px 700px at 12% 12%, rgba(0,229,255,0.04), transparent 60%),
-    radial-gradient(1000px 620px at 88% 86%, rgba(139,92,246,0.04), transparent 63%);
+    radial-gradient(1200px 700px at 12% 12%, rgba(0,212,255,0.03), transparent 60%),
+    radial-gradient(1000px 620px at 88% 86%, rgba(124,58,237,0.05), transparent 63%);
   pointer-events: none;
   z-index: 0;
   filter: blur(18px);
@@ -197,10 +197,10 @@ body.theme-light .sidebar-logo {
 }
 
 .nav-item.active {
-  background: linear-gradient(135deg, rgba(0,229,255,0.14), rgba(139,92,246,0.14));
-  color: var(--accent-cyan);
-  border: 1px solid rgba(0, 229, 255, 0.22);
-  box-shadow: 0 0 18px rgba(0,229,255,0.08);
+  background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+  color: #fff;
+  border: 1px solid rgba(124, 58, 237, 0.5);
+  box-shadow: 0 4px 20px rgba(109, 40, 217, 0.35);
 }
 
 body.theme-light .nav-item.active {
