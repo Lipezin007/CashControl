@@ -1,4 +1,4 @@
-const CACHE_NAME = "cashcontrol-v5";
+const CACHE_NAME = "cashcontrol-v6";
 
 // Assets da interface que ficam em cache (app shell)
 const STATIC_ASSETS = [
