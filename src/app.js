@@ -1127,23 +1127,36 @@ async function carregarFatura() {
 }
 
 async function carregarMetas(){
+  if (!metasBody || !filtroMes?.value) return;
+
   const mes = filtroMes.value;
   const dados = await api(`/api/metas?mes=${mes}`).then(r=>r.json());
 
-  metasBody.innerHTML = dados.map(m => {
+  if (!dados.length) {
+    metasBody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px;">Nenhuma meta definida. Use o formulário acima para criar metas por categoria.</td></tr>`;
+    return;
+  }
 
+  metasBody.innerHTML = dados.map(m => {
     const perc = m.valor_meta > 0
       ? ((m.gasto_mes / m.valor_meta) * 100).toFixed(0)
       : 0;
 
-    const alerta = perc > 100 ? "⚠️" : "";
+    const alerta = perc > 100 ? " ⚠️" : "";
+    const barColor = perc >= 100 ? "#ef4444" : perc >= 70 ? "#f59e0b" : "#22c55e";
+    const barWidth = Math.min(100, perc);
 
     return `
       <tr>
         <td>${m.categoria}</td>
         <td>${money(m.valor_meta)}</td>
         <td>${money(m.gasto_mes)}</td>
-        <td>${perc}% ${alerta}</td>
+        <td>
+          <div class="meta-progress-wrap">
+            <div class="meta-progress-bar" style="width:${barWidth}%;background:${barColor};"></div>
+          </div>
+          <span class="meta-perc-label">${perc}%${alerta}</span>
+        </td>
       </tr>
     `;
   }).join("");
@@ -1236,8 +1249,8 @@ async function refreshTudo() {
     await safeRun(carregarResumo, "carregarResumo");
   }
 
-  if (typeof carregarRelatorioCategorias === "function") {
-    await safeRun(carregarRelatorioCategorias, "carregarRelatorioCategorias");
+  if (typeof carregarMetas === "function") {
+    await safeRun(carregarMetas, "carregarMetas");
   }
 
   if (typeof carregarPrevisao === "function") {

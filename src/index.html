@@ -38,6 +38,18 @@
         </span>
         <span class="nav-label">Transações</span>
       </li>
+      <li class="nav-item" data-tab="cartoes-page">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        </span>
+        <span class="nav-label">Cartões</span>
+      </li>
+      <li class="nav-item" data-tab="metas-page">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </span>
+        <span class="nav-label">Metas</span>
+      </li>
       <li class="nav-item" data-tab="caixinhas">
         <span class="nav-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
@@ -55,18 +67,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         </span>
         <span class="nav-label">Relatórios</span>
-      </li>
-      <li class="nav-item nav-item-sub" data-tab="transacoes" data-scroll="metas-section">
-        <span class="nav-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        </span>
-        <span class="nav-label">Metas</span>
-      </li>
-      <li class="nav-item nav-item-sub" data-tab="transacoes" data-scroll="cartao-section">
-        <span class="nav-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-        </span>
-        <span class="nav-label">Cartões</span>
       </li>
     </ul>
 
@@ -102,184 +102,84 @@
   <main class="main-content">
 
     <!-- Tab contents -->
+
+    <!-- ===== TRANSAÇÕES ===== -->
     <div class="tab-content active" id="transacoes">
 
       <!-- RESUMO CARDS TOP -->
       <div class="resumo-top-cards" id="resumo"></div>
 
-      <div class="grid-transacoes">
+      <!-- NOVA TRANSAÇÃO -->
+      <section class="card box">
+        <h2>Nova Transação</h2>
 
-        <div class="coluna-transacoes coluna-principal">
-
-          <!-- NOVA TRANSAÇÃO -->
-          <section class="card box grande">
-            <h2>Nova Transação</h2>
-
-            <div class="transacoes-acoes">
-              <button id="abrirModalRec" class="btn-secundario">+ Nova Recorrência</button>
-              <button id="btnNovaCategoria" class="btn-secundario">+ Nova Categoria</button>
-            </div>
-
-            <form id="form" class="form-grid">
-              <input id="id" type="hidden">
-
-              <div class="full">
-                <label>Descrição</label>
-                <input id="descricao" placeholder="Ex: Salário, Mercado..." required>
-              </div>
-
-              <div>
-                <label>Valor (R$)</label>
-                <input id="valor" type="number" step="0.01" required>
-              </div>
-
-              <div>
-                <label>Tipo</label>
-                <select id="tipo">
-                  <option value="entrada">Entrada</option>
-                  <option value="saida">Saída</option>
-                </select>
-              </div>
-
-              <div>
-                <label>Origem</label>
-                <select id="origem">
-                  <option value="pix">PIX</option>
-                  <option value="debito">Débito</option>
-                  <option value="dinheiro">Dinheiro</option>
-                  <option value="cartao_credito">Cartão de Crédito</option>
-                </select>
-              </div>
-
-              <div>
-                <label>Categoria</label>
-                <select id="categoria"></select>
-              </div>
-
-              <div>
-                <label>Data</label>
-                <input id="data" type="date">
-              </div>
-
-              <div id="areaCartao" class="full">
-                <div>
-                  <label>Cartão</label>
-                  <select id="cartaoSelect"></select>
-                </div>
-                <div>
-                  <label>Parcelas</label>
-                  <input id="parcelasInput" type="number" value="1">
-                </div>
-                <div>
-                  <label>Juros Mensal</label>
-                  <input id="jurosInput" type="number" step="0.001" value="0">
-                </div>
-              </div>
-
-              <button type="submit" class="salvar full">Salvar</button>
-            </form>
-          </section>
-
-          <!-- METAS -->
-          <section class="card box" id="metas-section">
-            <h2>Metas</h2>
-            <select id="meta_categoria"></select>
-            <input type="number" id="meta_valor" placeholder="Valor da meta">
-            <button id="btnMeta">Salvar</button>
-            <table>
-              <thead>
-                <tr>
-                  <th>Categoria</th>
-                  <th>Saídas</th>
-                  <th>Entradas</th>
-                  <th>Meta</th>
-                  <th>%</th>
-                </tr>
-              </thead>
-              <tbody id="metasBody"></tbody>
-            </table>
-          </section>
-
+        <div class="transacoes-acoes">
+          <button id="abrirModalRec" class="btn-secundario">+ Nova Recorrência</button>
+          <button id="btnNovaCategoria" class="btn-secundario">+ Nova Categoria</button>
         </div>
 
-        <div class="coluna-transacoes coluna-lateral">
+        <form id="form" class="form-grid">
+          <input id="id" type="hidden">
 
-          <!-- CARTÃO -->
-          <section class="card box" id="cartao-section">
-            <h2>Cartão</h2>
+          <div class="full">
+            <label>Descrição</label>
+            <input id="descricao" placeholder="Ex: Salário, Mercado..." required>
+          </div>
 
-            <div class="acoes-cartao">
-              <button id="abrirModalCartao" class="btn-secundario">+ Criar Cartão</button>
-              <button id="btnEditarCartao" class="btn-secundario">Editar</button>
-              <button id="btnExcluirCartao" class="btn-secundario">Excluir</button>
+          <div>
+            <label>Valor (R$)</label>
+            <input id="valor" type="number" step="0.01" required>
+          </div>
+
+          <div>
+            <label>Tipo</label>
+            <select id="tipo">
+              <option value="entrada">Entrada</option>
+              <option value="saida">Saída</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Origem</label>
+            <select id="origem">
+              <option value="pix">PIX</option>
+              <option value="debito">Débito</option>
+              <option value="dinheiro">Dinheiro</option>
+              <option value="cartao_credito">Cartão de Crédito</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Categoria</label>
+            <select id="categoria"></select>
+          </div>
+
+          <div>
+            <label>Data</label>
+            <input id="data" type="date">
+          </div>
+
+          <div id="areaCartao" class="full">
+            <div>
+              <label>Cartão</label>
+              <select id="cartaoSelect"></select>
             </div>
-
-            <div class="linha-cartao">
-              <select id="fat_cartao"></select>
-              <input type="month" id="fat_mes">
-              <button id="btnFat">Ver fatura</button>
-              <button id="btnPagarFatura">Pagar Fatura</button>
+            <div>
+              <label>Parcelas</label>
+              <input id="parcelasInput" type="number" value="1">
             </div>
-
-            <!-- CARTÃO VISUAL -->
-            <div class="credit-card-visual" id="creditCardVisual" style="display:none;">
-              <div class="card-top-row">
-                <div class="card-chip"></div>
-                <div class="card-brand-logo">
-                  <div class="circle1"></div>
-                  <div class="circle2"></div>
-                </div>
-              </div>
-              <div class="card-number-row">
-                <div class="card-number" id="ccNumber">•••• •••• •••• ••••</div>
-              </div>
-              <div class="card-bottom-row">
-                <div>
-                  <div class="card-holder-label">Cartão</div>
-                  <div class="card-holder-name" id="ccName">—</div>
-                </div>
-                <div>
-                  <div class="card-limit-label">Limite</div>
-                  <div class="card-limit-value" id="ccLimit">—</div>
-                </div>
-              </div>
-              <div class="card-limit-bar-wrap" id="ccBarWrap" style="display:none;">
-                <div class="bar-label">
-                  <span>Usado</span>
-                  <span id="ccBarPct">0%</span>
-                </div>
-                <div class="card-limit-bar-bg">
-                  <div class="card-limit-bar-fill" id="ccBarFill" style="width:0%"></div>
-                </div>
-              </div>
+            <div>
+              <label>Juros Mensal</label>
+              <input id="jurosInput" type="number" step="0.001" value="0">
             </div>
+          </div>
 
-            <div id="controleCartao"></div>
-            <div id="fat_total"></div>
-
-            <table>
-              <thead>
-                <tr>
-                  <th>Parc</th>
-                  <th>Descrição</th>
-                  <th>Categoria</th>
-                  <th>Mês</th>
-                  <th>Valor</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="fat_itens"></tbody>
-            </table>
-            <h4>Previsão de parcelas</h4>
-            <div id="previsaoCartao"></div>
-          </section>
-
-        </div>
-
-      </div>
+          <button type="submit" class="salvar full">Salvar</button>
+        </form>
+      </section>
 
       <!-- TRANSAÇÕES TABLE -->
-      <section class="card wide">
+      <section class="card">
         <h2>Transações</h2>
         <table>
           <thead>
@@ -297,6 +197,137 @@
       </section>
 
     </div><!-- /transacoes -->
+
+    <!-- ===== CARTÕES ===== -->
+    <div class="tab-content" id="cartoes-page">
+
+      <div class="page-section-header">
+        <div class="page-section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        </div>
+        <div>
+          <h1 class="page-section-title">Cartões de Crédito</h1>
+          <p class="page-section-sub">Gerencie seus cartões, faturas e parcelamentos</p>
+        </div>
+      </div>
+
+      <section class="card box" id="cartao-section">
+        <h2>Gerenciar Cartão</h2>
+
+        <div class="acoes-cartao">
+          <button id="abrirModalCartao" class="btn-secundario">+ Criar Cartão</button>
+          <button id="btnEditarCartao" class="btn-secundario">Editar Cartão</button>
+          <button id="btnExcluirCartao" class="btn-secundario btn-danger-outline">Excluir</button>
+        </div>
+
+        <div class="linha-cartao">
+          <select id="fat_cartao"></select>
+          <input type="month" id="fat_mes">
+          <button id="btnFat">Ver fatura</button>
+          <button id="btnPagarFatura">Pagar Fatura</button>
+        </div>
+
+        <!-- CARTÃO VISUAL -->
+        <div class="credit-card-visual" id="creditCardVisual" style="display:none;">
+          <div class="card-top-row">
+            <div class="card-chip"></div>
+            <div class="card-brand-logo">
+              <div class="circle1"></div>
+              <div class="circle2"></div>
+            </div>
+          </div>
+          <div class="card-number-row">
+            <div class="card-number" id="ccNumber">•••• •••• •••• ••••</div>
+          </div>
+          <div class="card-bottom-row">
+            <div>
+              <div class="card-holder-label">Cartão</div>
+              <div class="card-holder-name" id="ccName">—</div>
+            </div>
+            <div>
+              <div class="card-limit-label">Limite</div>
+              <div class="card-limit-value" id="ccLimit">—</div>
+            </div>
+          </div>
+          <div class="card-limit-bar-wrap" id="ccBarWrap" style="display:none;">
+            <div class="bar-label">
+              <span>Usado</span>
+              <span id="ccBarPct">0%</span>
+            </div>
+            <div class="card-limit-bar-bg">
+              <div class="card-limit-bar-fill" id="ccBarFill" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="controleCartao"></div>
+        <div id="fat_total"></div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Parc</th>
+              <th>Descrição</th>
+              <th>Categoria</th>
+              <th>Mês</th>
+              <th>Valor</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="fat_itens"></tbody>
+        </table>
+
+        <h4 class="previsao-label">Previsão de parcelas futuras</h4>
+        <div id="previsaoCartao"></div>
+      </section>
+
+    </div><!-- /cartoes-page -->
+
+    <!-- ===== METAS ===== -->
+    <div class="tab-content" id="metas-page">
+
+      <div class="page-section-header">
+        <div class="page-section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div>
+          <h1 class="page-section-title">Metas de Gastos</h1>
+          <p class="page-section-sub">Defina e acompanhe suas metas de gastos por categoria</p>
+        </div>
+      </div>
+
+      <section class="card box" id="metas-section">
+        <h2>Definir Meta</h2>
+
+        <div class="metas-form-row">
+          <div class="metas-form-group">
+            <label>Categoria</label>
+            <select id="meta_categoria"></select>
+          </div>
+          <div class="metas-form-group">
+            <label>Valor da Meta (R$)</label>
+            <input type="number" id="meta_valor" placeholder="Ex: 500.00" step="0.01">
+          </div>
+          <button id="btnMeta" class="btn-salvar-meta">Salvar Meta</button>
+        </div>
+
+        <div class="metas-table-wrap">
+          <h2>Progresso por Categoria</h2>
+          <table class="metas-table">
+            <thead>
+              <tr>
+                <th>Categoria</th>
+                <th>Meta (R$)</th>
+                <th>Gasto no Mês</th>
+                <th>Progresso</th>
+              </tr>
+            </thead>
+            <tbody id="metasBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </div><!-- /metas-page -->
 
     <!-- CAIXINHAS -->
     <div class="tab-content" id="caixinhas">
@@ -561,24 +592,31 @@ if ("serviceWorker" in navigator) {
     if (target) target.classList.add('active');
   }
 
+  async function carregarDadosAba(tabId) {
+    try {
+      if (tabId === 'cartoes-page') {
+        if (typeof carregarCartoes === 'function') await carregarCartoes();
+        if (typeof carregarControleCartao === 'function') await carregarControleCartao();
+        if (typeof carregarFatura === 'function') await carregarFatura();
+      } else if (tabId === 'metas-page') {
+        if (typeof carregarCategoriasMeta === 'function') await carregarCategoriasMeta();
+        if (typeof carregarMetas === 'function') await carregarMetas();
+      }
+    } catch (err) {
+      console.warn('[Nav] Erro ao carregar dados da aba:', tabId, err);
+    }
+  }
+
   navItems.forEach(item => {
     item.addEventListener('click', () => {
       const tabId = item.dataset.tab;
-      const scrollTarget = item.dataset.scroll;
 
       // Update active state
       navItems.forEach(n => n.classList.remove('active'));
       item.classList.add('active');
 
       switchTab(tabId);
-
-      // Scroll to sub-section if specified
-      if (scrollTarget) {
-        setTimeout(() => {
-          const el = document.getElementById(scrollTarget);
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 50);
-      }
+      carregarDadosAba(tabId);
 
       // Close mobile sidebar
       document.getElementById('sidebar').classList.remove('sidebar-open');

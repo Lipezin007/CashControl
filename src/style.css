@@ -1046,7 +1046,9 @@ tr:hover { background: rgba(0,229,255,0.04); }
 
 body.theme-light tr:hover { background: rgba(8,145,178,0.06); }
 
-#transacoes.tab-content.active { display: block; }
+#transacoes.tab-content.active,
+#cartoes-page.tab-content.active,
+#metas-page.tab-content.active { display: block; }
 
 #lista .col-data       { width: 14%; }
 #lista .col-descricao  { width: 34%; word-break: break-word; white-space: normal; }
@@ -1095,28 +1097,13 @@ body.theme-light tr:hover { background: rgba(8,145,178,0.06); }
    NOVA TRANSAÇÃO ORGANIZADA
 ========================= */
 
-.grid-transacoes {
-  display: grid;
-  grid-template-columns: minmax(340px, 1.35fr) minmax(340px, 1fr);
-  gap: 18px;
-  align-items: start;
-  margin-bottom: 18px;
-}
-
-.coluna-transacoes {
-  display: grid;
-  gap: 18px;
-  align-content: start;
-}
-
-.coluna-lateral { grid-template-rows: auto 1fr; }
-
-#transacoes .box {
+#transacoes .box,
+#transacoes .card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 20px;
-  align-self: start;
+  margin-bottom: 18px;
 }
 
 .transacoes-acoes {
@@ -1173,29 +1160,29 @@ body.theme-light tr:hover { background: rgba(8,145,178,0.06); }
 
 #transacoes .card.wide table { margin-top: 12px; }
 
-#transacoes .linha-cartao {
+#cartoes-page .linha-cartao {
   display: grid;
   grid-template-columns: minmax(140px, 1fr) minmax(130px, 1fr);
   gap: 10px;
   margin-bottom: 10px;
 }
 
-#transacoes .linha-cartao button { width: 100%; }
+#cartoes-page .linha-cartao button { width: 100%; }
 
-#transacoes #fat_total { margin: 8px 0 4px; font-size: 14px; }
+#cartoes-page #fat_total { margin: 8px 0 4px; font-size: 14px; }
 
-#transacoes #fat_itens th,
-#transacoes #fat_itens td { font-size: 11px; padding: 6px; }
+#cartoes-page #fat_itens th,
+#cartoes-page #fat_itens td { font-size: 11px; padding: 6px; }
 
-#transacoes #fat_itens td { word-break: break-word; }
+#cartoes-page #fat_itens td { word-break: break-word; }
 
-#transacoes #previsaoCartao {
+#cartoes-page #previsaoCartao {
   margin-top: 10px;
   display: grid;
   gap: 6px;
 }
 
-#transacoes #previsaoCartao .prev-item {
+#cartoes-page #previsaoCartao .prev-item {
   display: flex;
   justify-content: space-between;
   gap: 10px;
@@ -1214,13 +1201,11 @@ body.theme-light tr:hover { background: rgba(8,145,178,0.06); }
 #transacoes #lista td,
 #transacoes #lista th { vertical-align: middle; }
 
-#transacoes > .card.wide { width: 100%; margin-top: 8px; }
+#transacoes > .card { width: 100%; margin-top: 8px; }
 
 @media (max-width: 680px) {
-  .grid-transacoes { grid-template-columns: 1fr; }
-  .coluna-transacoes { gap: 14px; }
   #transacoes .form-grid { grid-template-columns: 1fr; }
-  #transacoes .linha-cartao { grid-template-columns: 1fr; }
+  #cartoes-page .linha-cartao { grid-template-columns: 1fr; }
   #transacoes .form-grid .full { grid-column: auto; }
   #transacoes .form-grid button.salvar { grid-column: auto; }
   #areaCartao.mostrar { grid-template-columns: 1fr; }
@@ -1228,6 +1213,9 @@ body.theme-light tr:hover { background: rgba(8,145,178,0.06); }
   .acoes-cartao { flex-direction: column; align-items: stretch; }
   .transacoes-acoes .btn-secundario,
   .acoes-cartao .btn-secundario { width: 100%; }
+  .metas-form-row { flex-direction: column; }
+  .metas-form-row .metas-form-group { width: 100%; }
+  .btn-salvar-meta { width: 100%; }
 }
 
 /* =========================
@@ -1722,6 +1710,162 @@ body.login .auth-box::before {
   justify-content: space-between;
   padding: 6px 0;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+/* =========================
+   PAGE SECTION HEADER
+========================= */
+
+.page-section-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 20px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 24px var(--glow-purple);
+}
+
+.page-section-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(124,58,237,0.15));
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.page-section-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: var(--accent-cyan);
+}
+
+.page-section-title {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 700;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.page-section-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.2px;
+}
+
+/* =========================
+   CARTÕES PAGE
+========================= */
+
+#cartoes-page .card.box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.btn-danger-outline {
+  background: transparent !important;
+  border: 1px solid rgba(239,68,68,0.5) !important;
+  color: #ef4444 !important;
+}
+
+.btn-danger-outline:hover {
+  background: rgba(239,68,68,0.1) !important;
+}
+
+.previsao-label {
+  margin: 16px 0 8px;
+  font-size: 12px;
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+/* =========================
+   METAS PAGE
+========================= */
+
+#metas-page .card.box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.metas-form-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 16px;
+  background: rgba(124,58,237,0.06);
+  border: 1px solid rgba(124,58,237,0.15);
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+}
+
+.metas-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.metas-form-group select,
+.metas-form-group input {
+  width: 100%;
+}
+
+.btn-salvar-meta {
+  min-height: 42px;
+  padding: 10px 20px;
+  white-space: nowrap;
+  align-self: flex-end;
+}
+
+.metas-table-wrap {
+  margin-top: 8px;
+}
+
+.metas-table-wrap h2 {
+  margin-bottom: 12px;
+}
+
+.metas-table { width: 100%; }
+
+/* Progress bar na tabela de metas */
+.meta-progress-wrap {
+  height: 6px;
+  background: var(--border-subtle);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 4px;
+  min-width: 80px;
+}
+
+.meta-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.meta-perc-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 /* =========================
